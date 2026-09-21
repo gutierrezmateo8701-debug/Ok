@@ -1,4 +1,4 @@
--- [[ Rayfield UI Engine - Light Obfuscated ]]
+-- [[ Rayfield UI Engine - Soft Obfuscated (Fixed) ]]
 local _D = function(b)
     local s = {}
     for i = 1, #b do table.insert(s, string.char(b[i])) end
@@ -251,7 +251,7 @@ function Rayfield:CreateWindow(cfg)
 
         local Page = Instance.new(_D({83,99,114,111,108,108,105,110,103,70,114,97,109,101}), PF)
         Page.Size = UDim2.new(1, 0, 1, 0); Page.BackgroundTransparency = 1; Page.Visible = false; Page.ScrollBarThickness = 2
-        _0x8(Page, _D({83,99,114,101,101,110,83,104,111,116,73,109,97,103,101,67,111,108,111,114,51}) or Page, "Br")
+        _0x8(Page, _D({83,99,114,111,108,108,66,97,114,73,109,97,103,101,67,111,108,111,114,51}), "Br")
         
         local PList = Instance.new(_D({85,73,76,105,115,116,76,97,121,111,117,116}), Page)
         PList.SortOrder = Enum.SortOrder.LayoutOrder; PList.Padding = UDim.new(0, 4)
@@ -264,22 +264,24 @@ function Rayfield:CreateWindow(cfg)
         local function Select()
             for _, t in pairs(Window.Tabs) do
                 _0x10(t.Btn, {0.2, Enum.EasingStyle.Quad}, {BackgroundTransparency = 1, TextColor3 = _0x6.St})
-                if t.Page.Visible then
-                    local op = t.Page
-                    _0x10(op, {0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In}, {Position = UDim2.new(0, 10, 0, 0)})
-                    task.delay(0.15, function() op.Visible = false; op.Position = UDim2.new(0, 0, 0, 0) end)
+                if t.Page and t.Page.Visible then
+                    t.Page.Visible = false
+                    t.Page.Position = UDim2.new(0, 0, 0, 0)
                 end
             end
 
             _0x10(TabBtn, {0.2, Enum.EasingStyle.Quad}, {BackgroundTransparency = 0, TextColor3 = _0x6.Tx})
-            task.delay(0.12, function()
-                Page.Position = UDim2.new(0, -10, 0, 0); Page.Visible = true
-                _0x10(Page, {0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out}, {Position = UDim2.new(0, 0, 0, 0)})
-            end)
+            Page.Position = UDim2.new(0, 0, 0, 0)
+            Page.Visible = true
         end
 
         TabBtn.MouseButton1Click:Connect(Select)
-        if #Window.Tabs == 0 then Select() end
+        
+        TabObj.Btn = TabBtn
+        TabObj.Page = Page
+        table.insert(Window.Tabs, TabObj)
+
+        if #Window.Tabs == 1 then Select() end
 
         function TabObj:CreateSection(sn)
             local f = Instance.new(_D({70,114,97,109,101}), Page); f.Size = UDim2.new(1, -6, 0, 18); f.BackgroundTransparency = 1
@@ -615,9 +617,6 @@ function Rayfield:CreateWindow(cfg)
             if cCfg.Flag then Rayfield.Flags[cCfg.Flag] = cur end
         end
 
-        TabObj.Btn = TabBtn
-        TabObj.Page = Page
-        table.insert(Window.Tabs, TabObj)
         return TabObj
     end
 
