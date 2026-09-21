@@ -1,11 +1,11 @@
 
-local _P = game:GetService("_P")
+local _P = game:GetService("Players")
 local _I = game:GetService("UserInputService")
-local _T = game:GetService("_T")
-local _R = game:GetService("_R")
+local _T = game:GetService("TweenService")
+local _R = game:GetService("RunService")
 
-local _L = _P._L
-local _G = _L and _L:FindFirstChildOfClass("_G")
+local _L = _P.LocalPlayer
+local _G = _L and _L:FindFirstChildOfClass("PlayerGui")
 
 local function _n(class, props)
     local o = Instance.new(class)
@@ -100,9 +100,9 @@ function M4teoUI:CreateWindow(cfg)
             MinSize = cfg.MinSize or Vector2.new(350, 230),
             Animation = cfg.Animation ~= false,
             Sound = cfg.Sound ~= false,
-            _mb = (type(cfg._mb) == "table" and cfg._mb.Enabled ~= false) or cfg._mb ~= false,
-            MobileButtonConfig = type(cfg._mb) == "table" and cfg._mb or {},
-            LimitMobileButton = type(cfg._mb) == "table" and cfg._mb.LimitToScreen ~= false or cfg.LimitToScreen ~= false,
+            _mb = (type(cfg.MobileButton) == "table" and cfg.MobileButton.Enabled ~= false) or cfg.MobileButton ~= false,
+            MobileButtonConfig = type(cfg.MobileButton) == "table" and cfg.MobileButton or {},
+            LimitMobileButton = type(cfg.MobileButton) == "table" and cfg.MobileButton.LimitToScreen ~= false or cfg.LimitToScreen ~= false,
         }
     }
 
@@ -130,7 +130,7 @@ function M4teoUI:CreateWindow(cfg)
     local header = _n("Frame", {Size=UDim2.new(1,0,0,52), BackgroundTransparency=1, Parent=main})
     window.Header = header
     local title = _n("TextLabel", {Size=UDim2.new(1,-120,0,25),Position=UDim2.fromOffset(16,7),BackgroundTransparency=1,Text=cfg.Title or cfg.Name or "M4teoUI",TextColor3=theme.Text,Font=Enum.Font.GothamBold,TextSize=15,TextXAlignment=Enum.TextXAlignment.Left,Parent=header})
-    local subtitle = _n("TextLabel", {Size=UDim2.new(1,-120,0,18),Position=UDim2.fromOffset(16,29),BackgroundTransparency=1,Text=cfg.Subtitle or cfg.Author or cfg._ct or "",TextColor3=theme.SubText,Font=Enum.Font.Gotham,TextSize=9,TextXAlignment=Enum.TextXAlignment.Left,Parent=header})
+    local subtitle = _n("TextLabel", {Size=UDim2.new(1,-120,0,18),Position=UDim2.fromOffset(16,29),BackgroundTransparency=1,Text=cfg.Subtitle or cfg.Author or cfg.Subtitle or cfg.Author or "",TextColor3=theme.SubText,Font=Enum.Font.Gotham,TextSize=9,TextXAlignment=Enum.TextXAlignment.Left,Parent=header})
     window.TitleLabel, window.SubtitleLabel = title, subtitle
 
     local min = _n("TextButton", {Size=UDim2.fromOffset(30,30),Position=UDim2.new(1,-73,0,10),BackgroundColor3=theme.Element,Text="—",TextColor3=theme.Text,Font=Enum.Font.GothamBold,TextSize=15,AutoButtonColor=false,Parent=header})
@@ -221,7 +221,7 @@ function M4teoUI:CreateWindow(cfg)
         local card=_n("Frame",{Size=UDim2.fromOffset(260,66),BackgroundColor3=self.Theme.Element,BorderSizePixel=0,Parent=holder})
         _c(card,8); _s(card,self.Theme.Border,1)
         _n("TextLabel",{Size=UDim2.new(1,-18,0,20),Position=UDim2.fromOffset(9,6),BackgroundTransparency=1,Text=n.Title or "Notification",TextColor3=self.Theme.Text,Font=Enum.Font.GothamBold,TextSize=11,TextXAlignment=Enum.TextXAlignment.Left,Parent=card})
-        _n("TextLabel",{Size=UDim2.new(1,-18,0,32),Position=UDim2.fromOffset(9,27),BackgroundTransparency=1,Text=n._ct or "",TextColor3=self.Theme.SubText,Font=Enum.Font.Gotham,TextSize=9,TextWrapped=true,TextXAlignment=Enum.TextXAlignment.Left,Parent=card})
+        _n("TextLabel",{Size=UDim2.new(1,-18,0,32),Position=UDim2.fromOffset(9,27),BackgroundTransparency=1,Text=n.Content or n.Text or "",TextColor3=self.Theme.SubText,Font=Enum.Font.Gotham,TextSize=9,TextWrapped=true,TextXAlignment=Enum.TextXAlignment.Left,Parent=card})
         local bar=_n("Frame",{Size=UDim2.new(1,0,0,2),Position=UDim2.new(0,0,1,-2),BackgroundColor3=self.Theme.Accent,BorderSizePixel=0,Parent=card})
         card.Position=UDim2.new(1,25,0,0); _t(card,.22,{Position=UDim2.new(0,0,0,0)})
         task.delay(tonumber(n.Duration) or 3,function() if card.Parent then _t(card,.2,{Position=UDim2.new(1,25,0,0)}); task.wait(.2); card:Destroy() end end)
@@ -272,7 +272,7 @@ function M4teoUI:CreateWindow(cfg)
             local l=_n("TextLabel",{Size=UDim2.new(1,-4,0,22),BackgroundTransparency=1,Text=string.upper(text or "SECTION"),TextColor3=self.Window.Theme.SubText,Font=Enum.Font.GothamBold,TextSize=9,TextXAlignment=Enum.TextXAlignment.Left,Parent=page}); return l
         end
         function tab:Paragraph(cfg3)
-            cfg3=cfg3 or {}; local f=holder(1,58); _n("TextLabel",{Size=UDim2.new(1,-18,0,20),Position=UDim2.fromOffset(9,6),BackgroundTransparency=1,Text=cfg3.Title or "Paragraph",TextColor3=self.Window.Theme.Text,Font=Enum.Font.GothamBold,TextSize=11,TextXAlignment=Enum.TextXAlignment.Left,Parent=f}); _n("TextLabel",{Size=UDim2.new(1,-18,0,30),Position=UDim2.fromOffset(9,26),BackgroundTransparency=1,Text=cfg3._ct or cfg3.Text or "",TextColor3=self.Window.Theme.SubText,Font=Enum.Font.Gotham,TextSize=9,TextWrapped=true,TextXAlignment=Enum.TextXAlignment.Left,Parent=f}); return f
+            cfg3=cfg3 or {}; local f=holder(1,58); _n("TextLabel",{Size=UDim2.new(1,-18,0,20),Position=UDim2.fromOffset(9,6),BackgroundTransparency=1,Text=cfg3.Title or "Paragraph",TextColor3=self.Window.Theme.Text,Font=Enum.Font.GothamBold,TextSize=11,TextXAlignment=Enum.TextXAlignment.Left,Parent=f}); _n("TextLabel",{Size=UDim2.new(1,-18,0,30),Position=UDim2.fromOffset(9,26),BackgroundTransparency=1,Text=cfg3.Text or cfg3.Content or "",TextColor3=self.Window.Theme.SubText,Font=Enum.Font.Gotham,TextSize=9,TextWrapped=true,TextXAlignment=Enum.TextXAlignment.Left,Parent=f}); return f
         end
         function tab:Button(cfg3)
             cfg3=cfg3 or {}; local f=holder(1,38); local b2=_n("TextButton",{Size=UDim2.new(1,-10,1,-8),Position=UDim2.fromOffset(5,4),BackgroundColor3=self.Window.Theme.Hover,Text=cfg3.Title or cfg3.Name or "Button",TextColor3=self.Window.Theme.Text,Font=Enum.Font.GothamMedium,TextSize=10,AutoButtonColor=false,Parent=f}); _c(b2,6); b2.MouseButton1Click:Connect(function() clickSound(); if cfg3.Callback then task.spawn(cfg3.Callback) end end); addTheme(f,function(t)f.BackgroundColor3=t.Element;b2.BackgroundColor3=t.Hover;b2.TextColor3=t.Text end); return {Set=function(_,v)b2.Text=tostring(v)end} end
