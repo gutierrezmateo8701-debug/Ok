@@ -1,5 +1,5 @@
 --[[
-    Rayfield UI Library - Fix Spectrum ColorPicker (Touch/Mobile) + Default LoadingTime
+    Rayfield UI Library - Motor Completo con todos los Componentes
 --]]
 
 local TweenService = game:GetService("TweenService")
@@ -41,7 +41,7 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.Parent = ParentGui
 
--- Botón "UI" Flotante (Negro con borde RGB)
+-- Botón "UI" Flotante (Negro con Borde RGB)
 local UIBtn = Instance.new("TextButton")
 UIBtn.Name = "ToggleUI_RGB"
 UIBtn.Size = UDim2.new(0, 42, 0, 42)
@@ -52,7 +52,7 @@ UIBtn.Font = Enum.Font.GothamBold
 UIBtn.TextSize = 14
 UIBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 UIBtn.ZIndex = 9999
-UIBtn.Visible = false -- Permanece oculto durante la carga
+UIBtn.Visible = false
 UIBtn.Parent = ScreenGui
 
 Instance.new("UICorner", UIBtn).CornerRadius = UDim.new(0, 8)
@@ -138,11 +138,9 @@ end
 function Rayfield:CreateWindow(cfg)
     cfg = cfg or {}
     local mainVisible = true
-    
-    -- Si no especifican LoadingTime, el tiempo por defecto es de 3 segundos
     local loadingTime = cfg.LoadingTime or 3
 
-    -- Ventana Principal Chica (Oculta al inicio)
+    -- Ventana Principal
     local MainFrame = Instance.new("Frame", ScreenGui)
     MainFrame.Name = "MainFrame"
     MainFrame.Size = UDim2.new(0, 460, 0, 290)
@@ -155,7 +153,7 @@ function Rayfield:CreateWindow(cfg)
     local MainStroke = Instance.new("UIStroke", MainFrame)
     MainStroke.Color = _0xT.Br
 
-    -- Animación de Carga Solo Texto RGB
+    -- Animación Carga Solo Texto RGB
     local loadTitleText = cfg.LoadingTitle or "Loading..."
     local loadSubtitleText = cfg.LoadingSubtitle or "de mateo"
 
@@ -182,7 +180,6 @@ function Rayfield:CreateWindow(cfg)
     LSub.BackgroundTransparency = 1
     RGB_Objects[LSub] = "TextColor3"
 
-    -- Espera síncrona del LoadingTime especificado o por defecto (3s)
     task.spawn(function()
         task.wait(loadingTime)
         Tween(LTitle, {0.3, Enum.EasingStyle.Quad}, {TextTransparency = 1})
@@ -190,7 +187,6 @@ function Rayfield:CreateWindow(cfg)
         task.wait(0.3)
         LoadHolder:Destroy()
 
-        -- Mostrar GUI y Botón UI
         MainFrame.Visible = true
         UIBtn.Visible = true
     end)
@@ -264,6 +260,7 @@ function Rayfield:CreateWindow(cfg)
         TabBtn.MouseButton1Click:Connect(Select)
         if #Window.Tabs == 0 then Select() end
 
+        -- 1. SECCIÓN
         function TabObj:CreateSection(secName)
             local f = Instance.new("Frame", Page)
             f.Size = UDim2.new(1, -6, 0, 18); f.BackgroundTransparency = 1
@@ -272,6 +269,34 @@ function Rayfield:CreateWindow(cfg)
             l.TextColor3 = _0xT.St; l.Size = UDim2.new(1, 0, 1, 0); l.BackgroundTransparency = 1; l.TextXAlignment = Enum.TextXAlignment.Left
         end
 
+        -- 2. ETIQUETA (LABEL)
+        function TabObj:CreateLabel(text)
+            local f = Instance.new("Frame", Page)
+            f.Size = UDim2.new(1, -6, 0, 20); f.BackgroundTransparency = 1
+            local l = Instance.new("TextLabel", f)
+            l.Text = text or ""; l.Font = Enum.Font.Gotham; l.TextSize = 10; l.TextColor3 = _0xT.Tx
+            l.Size = UDim2.new(1, 0, 1, 0); l.BackgroundTransparency = 1; l.TextXAlignment = Enum.TextXAlignment.Left
+            return { Set = function(_, newText) l.Text = newText end }
+        end
+
+        -- 3. PÁRRAFO (PARAGRAPH)
+        function TabObj:CreateParagraph(pCfg)
+            pCfg = pCfg or {}
+            local f = Instance.new("Frame", Page)
+            f.Size = UDim2.new(1, -6, 0, 42); f.BackgroundColor3 = _0xT.El
+            Instance.new("UICorner", f).CornerRadius = UDim.new(0, 4)
+
+            local t = Instance.new("TextLabel", f)
+            t.Text = pCfg.Title or "Título"; t.Font = Enum.Font.GothamBold; t.TextSize = 10; t.TextColor3 = _0xT.Tx
+            t.Position = UDim2.new(0, 8, 0, 4); t.Size = UDim2.new(1, -16, 0, 14); t.BackgroundTransparency = 1; t.TextXAlignment = Enum.TextXAlignment.Left
+
+            local c = Instance.new("TextLabel", f)
+            c.Text = pCfg.Content or "Contenido"; c.Font = Enum.Font.Gotham; c.TextSize = 9; c.TextColor3 = _0xT.St
+            c.Position = UDim2.new(0, 8, 0, 18); c.Size = UDim2.new(1, -16, 0, 20); c.BackgroundTransparency = 1; c.TextXAlignment = Enum.TextXAlignment.Left; c.TextWrapped = true
+            return { Set = function(_, newT, newC) if newT then t.Text = newT end if newC then c.Text = newC end end }
+        end
+
+        -- 4. BOTÓN (BUTTON)
         function TabObj:CreateButton(bCfg)
             bCfg = bCfg or {}
             local f = Instance.new("Frame", Page)
@@ -287,6 +312,7 @@ function Rayfield:CreateWindow(cfg)
             end)
         end
 
+        -- 5. TOGGLE (INTERRUPTOR)
         function TabObj:CreateToggle(tCfg)
             tCfg = tCfg or {}
             local st = tCfg.CurrentValue or false
@@ -323,7 +349,173 @@ function Rayfield:CreateWindow(cfg)
             return { Set = Update }
         end
 
-        -- COLOR PICKER NATIVO CON TODOS LOS COLORES + COMPATIBLE MÓVIL/TOUCH
+        -- 6. SLIDER (BARRA DESLIZANTE - TOUCH + MOUSE)
+        function TabObj:CreateSlider(sCfg)
+            sCfg = sCfg or {}
+            local min = (sCfg.Range and sCfg.Range[1]) or 0
+            local max = (sCfg.Range and sCfg.Range[2]) or 100
+            local val = math.clamp(sCfg.CurrentValue or min, min, max)
+
+            local f = Instance.new("Frame", Page)
+            f.Size = UDim2.new(1, -6, 0, 36); f.BackgroundColor3 = _0xT.El
+            Instance.new("UICorner", f).CornerRadius = UDim.new(0, 4)
+
+            local l = Instance.new("TextLabel", f)
+            l.Text = sCfg.Name or "Slider"; l.Font = Enum.Font.GothamMedium; l.TextSize = 10; l.TextColor3 = _0xT.Tx
+            l.Position = UDim2.new(0, 8, 0, 4); l.Size = UDim2.new(0.6, 0, 0, 14); l.BackgroundTransparency = 1; l.TextXAlignment = Enum.TextXAlignment.Left
+
+            local vl = Instance.new("TextLabel", f)
+            vl.Text = tostring(val); vl.Font = Enum.Font.GothamBold; vl.TextSize = 10; vl.TextColor3 = _0xT.St
+            vl.Position = UDim2.new(1, -40, 0, 4); vl.Size = UDim2.new(0, 32, 0, 14); vl.BackgroundTransparency = 1; vl.TextXAlignment = Enum.TextXAlignment.Right
+
+            local bar = Instance.new("Frame", f)
+            bar.Size = UDim2.new(1, -16, 0, 6); bar.Position = UDim2.new(0, 8, 0, 22)
+            bar.BackgroundColor3 = _0xT.Br
+            Instance.new("UICorner", bar).CornerRadius = UDim.new(1, 0)
+
+            local fill = Instance.new("Frame", bar)
+            local pct = (val - min) / (max - min)
+            fill.Size = UDim2.new(pct, 0, 1, 0)
+            fill.BackgroundColor3 = Color3.fromRGB(80, 70, 230)
+            Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+
+            local dragging = false
+
+            local function UpdateSlider(inp)
+                local relX = math.clamp((inp.Position.X - bar.AbsolutePosition.X) / bar.AbsoluteSize.X, 0, 1)
+                val = math.floor(min + (max - min) * relX)
+                fill.Size = UDim2.new(relX, 0, 1, 0)
+                vl.Text = tostring(val)
+                if sCfg.Flag then Rayfield.Flags[sCfg.Flag] = val end
+                if sCfg.Callback then sCfg.Callback(val) end
+            end
+
+            local function IsValid(inp) return inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch end
+            local function IsMove(inp) return inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch end
+
+            f.InputBegan:Connect(function(inp) if IsValid(inp) then dragging = true; UpdateSlider(inp) end end)
+            UserInputService.InputChanged:Connect(function(inp) if dragging and IsMove(inp) then UpdateSlider(inp) end end)
+            UserInputService.InputEnded:Connect(function(inp) if IsValid(inp) then dragging = false end end)
+
+            if sCfg.Flag then Rayfield.Flags[sCfg.Flag] = val end
+            return { Set = function(_, nVal) val = math.clamp(nVal, min, max) fill.Size = UDim2.new((val - min)/(max - min), 0, 1, 0) vl.Text = tostring(val) end }
+        end
+
+        -- 7. DROPDOWN (MENÚ DESPLEGABLE)
+        function TabObj:CreateDropdown(dCfg)
+            dCfg = dCfg or {}
+            local opts = dCfg.Options or {}
+            local selected = dCfg.CurrentOption or opts[1] or "Ninguno"
+            local expanded = false
+
+            local f = Instance.new("Frame", Page)
+            f.Size = UDim2.new(1, -6, 0, 28); f.BackgroundColor3 = _0xT.El; f.ClipsDescendants = true
+            Instance.new("UICorner", f).CornerRadius = UDim.new(0, 4)
+
+            local l = Instance.new("TextLabel", f)
+            l.Text = dCfg.Name or "Dropdown"; l.Font = Enum.Font.GothamMedium; l.TextSize = 10; l.TextColor3 = _0xT.Tx
+            l.Position = UDim2.new(0, 8, 0, 0); l.Size = UDim2.new(0.5, 0, 0, 28); l.BackgroundTransparency = 1; l.TextXAlignment = Enum.TextXAlignment.Left
+
+            local selL = Instance.new("TextLabel", f)
+            selL.Text = selected; selL.Font = Enum.Font.GothamBold; selL.TextSize = 10; selL.TextColor3 = Color3.fromRGB(80, 70, 230)
+            selL.Position = UDim2.new(0.5, 0, 0, 0); selL.Size = UDim2.new(0.5, -10, 0, 28); selL.BackgroundTransparency = 1; selL.TextXAlignment = Enum.TextXAlignment.Right
+
+            local toggleBtn = Instance.new("TextButton", f)
+            toggleBtn.Size = UDim2.new(1, 0, 0, 28); toggleBtn.BackgroundTransparency = 1; toggleBtn.Text = ""
+
+            local container = Instance.new("Frame", f)
+            container.Size = UDim2.new(1, -12, 0, #opts * 22); container.Position = UDim2.new(0, 6, 0, 30); container.BackgroundTransparency = 1
+            local cList = Instance.new("UIListLayout", container); cList.Padding = UDim.new(0, 2)
+
+            for _, opt in ipairs(opts) do
+                local ob = Instance.new("TextButton", container)
+                ob.Size = UDim2.new(1, 0, 0, 20); ob.BackgroundColor3 = _0xT.Br; ob.Text = opt
+                ob.Font = Enum.Font.Gotham; ob.TextSize = 9; ob.TextColor3 = _0xT.Tx
+                Instance.new("UICorner", ob).CornerRadius = UDim.new(0, 3)
+
+                ob.MouseButton1Click:Connect(function()
+                    selected = opt
+                    selL.Text = selected
+                    expanded = false
+                    Tween(f, {0.2, Enum.EasingStyle.Quad}, {Size = UDim2.new(1, -6, 0, 28)})
+                    if dCfg.Flag then Rayfield.Flags[dCfg.Flag] = selected end
+                    if dCfg.Callback then dCfg.Callback(selected) end
+                end)
+            end
+
+            toggleBtn.MouseButton1Click:Connect(function()
+                expanded = not expanded
+                Tween(f, {0.2, Enum.EasingStyle.Quad}, {Size = expanded and UDim2.new(1, -6, 0, 34 + #opts * 22) or UDim2.new(1, -6, 0, 28)})
+            end)
+
+            if dCfg.Flag then Rayfield.Flags[dCfg.Flag] = selected end
+        end
+
+        -- 8. INPUT (CAJA DE TEXTO)
+        function TabObj:CreateInput(iCfg)
+            iCfg = iCfg or {}
+            local f = Instance.new("Frame", Page)
+            f.Size = UDim2.new(1, -6, 0, 28); f.BackgroundColor3 = _0xT.El
+            Instance.new("UICorner", f).CornerRadius = UDim.new(0, 4)
+
+            local l = Instance.new("TextLabel", f)
+            l.Text = iCfg.Name or "Input"; l.Font = Enum.Font.GothamMedium; l.TextSize = 10; l.TextColor3 = _0xT.Tx
+            l.Position = UDim2.new(0, 8, 0, 0); l.Size = UDim2.new(0.5, 0, 1, 0); l.BackgroundTransparency = 1; l.TextXAlignment = Enum.TextXAlignment.Left
+
+            local box = Instance.new("TextBox", f)
+            box.Size = UDim2.new(0.45, 0, 0, 20); box.Position = UDim2.new(0.52, 0, 0.5, -10)
+            box.BackgroundColor3 = _0xT.Br; box.Text = ""; box.PlaceholderText = iCfg.PlaceholderText or "Escribir..."
+            box.Font = Enum.Font.Gotham; box.TextSize = 9; box.TextColor3 = _0xT.Tx; box.ClearTextOnFocus = false
+            Instance.new("UICorner", box).CornerRadius = UDim.new(0, 3)
+
+            box.FocusLost:Connect(function(enter)
+                if iCfg.Flag then Rayfield.Flags[iCfg.Flag] = box.Text end
+                if iCfg.Callback then iCfg.Callback(box.Text) end
+            end)
+        end
+
+        -- 9. KEYBIND (ASIGNACIÓN DE TECLA)
+        function TabObj:CreateKeybind(kCfg)
+            kCfg = kCfg or {}
+            local currentKey = kCfg.CurrentKeybind or "E"
+            local binding = false
+
+            local f = Instance.new("Frame", Page)
+            f.Size = UDim2.new(1, -6, 0, 28); f.BackgroundColor3 = _0xT.El
+            Instance.new("UICorner", f).CornerRadius = UDim.new(0, 4)
+
+            local l = Instance.new("TextLabel", f)
+            l.Text = kCfg.Name or "Keybind"; l.Font = Enum.Font.GothamMedium; l.TextSize = 10; l.TextColor3 = _0xT.Tx
+            l.Position = UDim2.new(0, 8, 0, 0); l.Size = UDim2.new(0.6, 0, 1, 0); l.BackgroundTransparency = 1; l.TextXAlignment = Enum.TextXAlignment.Left
+
+            local btn = Instance.new("TextButton", f)
+            btn.Size = UDim2.new(0, 50, 0, 18); btn.Position = UDim2.new(1, -56, 0.5, -9)
+            btn.BackgroundColor3 = _0xT.Br; btn.Text = currentKey; btn.Font = Enum.Font.GothamBold; btn.TextSize = 9; btn.TextColor3 = _0xT.Tx
+            Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 3)
+
+            btn.MouseButton1Click:Connect(function()
+                binding = true
+                btn.Text = "..."
+                local conn
+                conn = UserInputService.InputBegan:Connect(function(inp)
+                    if inp.UserInputType == Enum.UserInputType.Keyboard then
+                        currentKey = inp.KeyCode.Name
+                        btn.Text = currentKey
+                        binding = false
+                        conn:Disconnect()
+                        if kCfg.Flag then Rayfield.Flags[kCfg.Flag] = currentKey end
+                    end
+                end)
+            end)
+
+            UserInputService.InputBegan:Connect(function(inp, gpe)
+                if not gpe and not binding and inp.UserInputType == Enum.UserInputType.Keyboard and inp.KeyCode.Name == currentKey then
+                    if kCfg.Callback then kCfg.Callback(currentKey) end
+                end
+            end)
+        end
+
+        -- 10. COLOR PICKER
         function TabObj:CreateColorpicker(cCfg)
             cCfg = cCfg or {}
             local currentColor = cCfg.Color or Color3.fromRGB(255, 0, 0)
@@ -331,37 +523,25 @@ function Rayfield:CreateWindow(cfg)
             local expanded = false
 
             local f = Instance.new("Frame", Page)
-            f.Size = UDim2.new(1, -6, 0, 28)
-            f.BackgroundColor3 = _0xT.El
-            f.ClipsDescendants = true
+            f.Size = UDim2.new(1, -6, 0, 28); f.BackgroundColor3 = _0xT.El; f.ClipsDescendants = true
             Instance.new("UICorner", f).CornerRadius = UDim.new(0, 4)
 
             local l = Instance.new("TextLabel", f)
-            l.Text = cCfg.Name or "Colorpicker"
-            l.Font = Enum.Font.GothamMedium; l.TextSize = 10; l.TextColor3 = _0xT.Tx
+            l.Text = cCfg.Name or "Colorpicker"; l.Font = Enum.Font.GothamMedium; l.TextSize = 10; l.TextColor3 = _0xT.Tx
             l.Position = UDim2.new(0, 8, 0, 0); l.Size = UDim2.new(0.6, 0, 0, 28); l.BackgroundTransparency = 1; l.TextXAlignment = Enum.TextXAlignment.Left
 
             local Preview = Instance.new("Frame", f)
-            Preview.Size = UDim2.new(0, 24, 0, 14)
-            Preview.Position = UDim2.new(1, -32, 0, 7)
-            Preview.BackgroundColor3 = currentColor
+            Preview.Size = UDim2.new(0, 24, 0, 14); Preview.Position = UDim2.new(1, -32, 0, 7); Preview.BackgroundColor3 = currentColor
             Instance.new("UICorner", Preview).CornerRadius = UDim.new(0, 3)
 
             local toggleBtn = Instance.new("TextButton", f)
-            toggleBtn.Size = UDim2.new(1, 0, 0, 28)
-            toggleBtn.BackgroundTransparency = 1
-            toggleBtn.Text = ""
+            toggleBtn.Size = UDim2.new(1, 0, 0, 28); toggleBtn.BackgroundTransparency = 1; toggleBtn.Text = ""
 
-            -- Contenedor
             local PickerContainer = Instance.new("Frame", f)
-            PickerContainer.Size = UDim2.new(1, -16, 0, 122)
-            PickerContainer.Position = UDim2.new(0, 8, 0, 32)
-            PickerContainer.BackgroundTransparency = 1
+            PickerContainer.Size = UDim2.new(1, -16, 0, 122); PickerContainer.Position = UDim2.new(0, 8, 0, 32); PickerContainer.BackgroundTransparency = 1
 
-            -- PALETA DE COLORES NATIVA DE ROBLOX (UIGradient del arcoíris completo)
             local Palette = Instance.new("Frame", PickerContainer)
-            Palette.Size = UDim2.new(1, 0, 0, 90)
-            Palette.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            Palette.Size = UDim2.new(1, 0, 0, 90); Palette.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             Instance.new("UICorner", Palette).CornerRadius = UDim.new(0, 4)
 
             local RainbowGradient = Instance.new("UIGradient", Palette)
@@ -375,54 +555,34 @@ function Rayfield:CreateWindow(cfg)
                 ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0))
             })
 
-            -- Capa de sombreado vertical (Sombra/Saturación)
             local DarkOverlay = Instance.new("Frame", Palette)
-            DarkOverlay.Size = UDim2.new(1, 0, 1, 0)
-            DarkOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-            DarkOverlay.BackgroundTransparency = 0
+            DarkOverlay.Size = UDim2.new(1, 0, 1, 0); DarkOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
             Instance.new("UICorner", DarkOverlay).CornerRadius = UDim.new(0, 4)
 
             local DarkGradient = Instance.new("UIGradient", DarkOverlay)
             DarkGradient.Rotation = 90
             DarkGradient.Transparency = NumberSequence.new({
-                NumberSequenceKeypoint.new(0, 1), -- Transparente arriba (Luz)
-                NumberSequenceKeypoint.new(1, 0)  -- Sólido abajo (Oscuridad)
+                NumberSequenceKeypoint.new(0, 1),
+                NumberSequenceKeypoint.new(1, 0)
             })
 
-            -- Circulito de Selección (Knob)
             local Knob = Instance.new("Frame", Palette)
-            Knob.Size = UDim2.new(0, 14, 0, 14)
-            Knob.Position = UDim2.new(0.5, -7, 0.5, -7)
-            Knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-            Knob.ZIndex = 10
+            Knob.Size = UDim2.new(0, 14, 0, 14); Knob.Position = UDim2.new(0.5, -7, 0.5, -7)
+            Knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255); Knob.ZIndex = 10
             Instance.new("UICorner", Knob).CornerRadius = UDim.new(1, 0)
-            local KnobStroke = Instance.new("UIStroke", Knob)
-            KnobStroke.Color = Color3.fromRGB(0, 0, 0)
-            KnobStroke.Thickness = 2
+            local KnobStroke = Instance.new("UIStroke", Knob); KnobStroke.Color = Color3.fromRGB(0, 0, 0); KnobStroke.Thickness = 2
 
-            -- Botones Aceptar y Cancelar
             local BtnFrame = Instance.new("Frame", PickerContainer)
-            BtnFrame.Size = UDim2.new(1, 0, 0, 22)
-            BtnFrame.Position = UDim2.new(0, 0, 0, 96)
-            BtnFrame.BackgroundTransparency = 1
+            BtnFrame.Size = UDim2.new(1, 0, 0, 22); BtnFrame.Position = UDim2.new(0, 0, 0, 96); BtnFrame.BackgroundTransparency = 1
 
             local AcceptBtn = Instance.new("TextButton", BtnFrame)
-            AcceptBtn.Size = UDim2.new(0.48, 0, 1, 0)
-            AcceptBtn.BackgroundColor3 = Color3.fromRGB(45, 140, 60)
-            AcceptBtn.Text = "Aceptar"
-            AcceptBtn.Font = Enum.Font.GothamBold
-            AcceptBtn.TextSize = 10
-            AcceptBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            AcceptBtn.Size = UDim2.new(0.48, 0, 1, 0); AcceptBtn.BackgroundColor3 = Color3.fromRGB(45, 140, 60)
+            AcceptBtn.Text = "Aceptar"; AcceptBtn.Font = Enum.Font.GothamBold; AcceptBtn.TextSize = 10; AcceptBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
             Instance.new("UICorner", AcceptBtn).CornerRadius = UDim.new(0, 4)
 
             local CancelBtn = Instance.new("TextButton", BtnFrame)
-            CancelBtn.Size = UDim2.new(0.48, 0, 1, 0)
-            CancelBtn.Position = UDim2.new(0.52, 0, 0, 0)
-            CancelBtn.BackgroundColor3 = Color3.fromRGB(160, 45, 45)
-            CancelBtn.Text = "Cancelar"
-            CancelBtn.Font = Enum.Font.GothamBold
-            CancelBtn.TextSize = 10
-            CancelBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            CancelBtn.Size = UDim2.new(0.48, 0, 1, 0); CancelBtn.Position = UDim2.new(0.52, 0, 0, 0)
+            CancelBtn.BackgroundColor3 = Color3.fromRGB(160, 45, 45); CancelBtn.Text = "Cancelar"; CancelBtn.Font = Enum.Font.GothamBold; CancelBtn.TextSize = 10; CancelBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
             Instance.new("UICorner", CancelBtn).CornerRadius = UDim.new(0, 4)
 
             local dragging = false
@@ -430,39 +590,17 @@ function Rayfield:CreateWindow(cfg)
             local function UpdateColorFromInput(input)
                 local relX = math.clamp((input.Position.X - Palette.AbsolutePosition.X) / Palette.AbsoluteSize.X, 0, 1)
                 local relY = math.clamp((input.Position.Y - Palette.AbsolutePosition.Y) / Palette.AbsoluteSize.Y, 0, 1)
-
                 Knob.Position = UDim2.new(relX, -7, relY, -7)
                 tempColor = Color3.fromHSV(relX, 1, 1 - relY)
                 Preview.BackgroundColor3 = tempColor
             end
 
-            -- Soporte Táctil (Móvil) y Ratón (PC)
-            local function IsValidInput(inp)
-                return inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch
-            end
+            local function IsValid(inp) return inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch end
+            local function IsMove(inp) return inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch end
 
-            local function IsMoveInput(inp)
-                return inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch
-            end
-
-            Palette.InputBegan:Connect(function(inp)
-                if IsValidInput(inp) then
-                    dragging = true
-                    UpdateColorFromInput(inp)
-                end
-            end)
-
-            UserInputService.InputChanged:Connect(function(inp)
-                if dragging and IsMoveInput(inp) then
-                    UpdateColorFromInput(inp)
-                end
-            end)
-
-            UserInputService.InputEnded:Connect(function(inp)
-                if IsValidInput(inp) then
-                    dragging = false
-                end
-            end)
+            Palette.InputBegan:Connect(function(inp) if IsValid(inp) then dragging = true; UpdateColorFromInput(inp) end end)
+            UserInputService.InputChanged:Connect(function(inp) if dragging and IsMove(inp) then UpdateColorFromInput(inp) end end)
+            UserInputService.InputEnded:Connect(function(inp) if IsValid(inp) then dragging = false end end)
 
             AcceptBtn.MouseButton1Click:Connect(function()
                 currentColor = tempColor
@@ -482,12 +620,8 @@ function Rayfield:CreateWindow(cfg)
 
             toggleBtn.MouseButton1Click:Connect(function()
                 expanded = not expanded
-                if expanded then
-                    tempColor = currentColor
-                end
-                Tween(f, {0.2, Enum.EasingStyle.Quad}, {
-                    Size = expanded and UDim2.new(1, -6, 0, 160) or UDim2.new(1, -6, 0, 28)
-                })
+                if expanded then tempColor = currentColor end
+                Tween(f, {0.2, Enum.EasingStyle.Quad}, {Size = expanded and UDim2.new(1, -6, 0, 160) or UDim2.new(1, -6, 0, 28)})
             end)
 
             if cCfg.Flag then Rayfield.Flags[cCfg.Flag] = currentColor end
