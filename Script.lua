@@ -1,5 +1,5 @@
 --[[
-    Rayfield UI Library - Fix ColorPicker + Synchronized Loading Screen
+    Rayfield UI Library - Fix Spectrum ColorPicker (Touch/Mobile) + Default LoadingTime
 --]]
 
 local TweenService = game:GetService("TweenService")
@@ -41,7 +41,7 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.Parent = ParentGui
 
--- Botón "UI" Flotante (Inicialmente Oculto)
+-- Botón "UI" Flotante (Negro con borde RGB)
 local UIBtn = Instance.new("TextButton")
 UIBtn.Name = "ToggleUI_RGB"
 UIBtn.Size = UDim2.new(0, 42, 0, 42)
@@ -52,7 +52,7 @@ UIBtn.Font = Enum.Font.GothamBold
 UIBtn.TextSize = 14
 UIBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 UIBtn.ZIndex = 9999
-UIBtn.Visible = false -- Oculto hasta terminar el tiempo de carga
+UIBtn.Visible = false -- Permanece oculto durante la carga
 UIBtn.Parent = ScreenGui
 
 Instance.new("UICorner", UIBtn).CornerRadius = UDim.new(0, 8)
@@ -82,12 +82,14 @@ local function MakeDraggable(gui, handle)
     local dragging, dragInput, dragStart, startPos
     handle = handle or gui
     handle.InputBegan:Connect(function(inp)
-        if inp.UserInputType == Enum.UserInputType.MouseButton1 then
+        if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
             dragging = true; dragStart = inp.Position; startPos = gui.Position
             inp.Changed:Connect(function() if inp.UserInputState == Enum.UserInputState.End then dragging = false end end)
         end
     end)
-    handle.InputChanged:Connect(function(inp) if inp.UserInputType == Enum.UserInputType.MouseMovement then dragInput = inp end end)
+    handle.InputChanged:Connect(function(inp) 
+        if inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch then dragInput = inp end 
+    end)
     UserInputService.InputChanged:Connect(function(inp)
         if inp == dragInput and dragging then
             local delta = inp.Position - dragStart
@@ -136,22 +138,24 @@ end
 function Rayfield:CreateWindow(cfg)
     cfg = cfg or {}
     local mainVisible = true
+    
+    -- Si no especifican LoadingTime, el tiempo por defecto es de 3 segundos
     local loadingTime = cfg.LoadingTime or 3
 
-    -- Ventana Principal Chica (Inicialmente Oculta)
+    -- Ventana Principal Chica (Oculta al inicio)
     local MainFrame = Instance.new("Frame", ScreenGui)
     MainFrame.Name = "MainFrame"
     MainFrame.Size = UDim2.new(0, 460, 0, 290)
     MainFrame.Position = UDim2.new(0.5, -230, 0.5, -145)
     MainFrame.BackgroundColor3 = _0xT.Bg
     MainFrame.BorderSizePixel = 0
-    MainFrame.Visible = false -- Oculto hasta que termine LoadingTime
+    MainFrame.Visible = false
     Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
     
     local MainStroke = Instance.new("UIStroke", MainFrame)
     MainStroke.Color = _0xT.Br
 
-    -- CARGA SOLO TEXTO RGB (Sin pantallas ni fondos)
+    -- Animación de Carga Solo Texto RGB
     local loadTitleText = cfg.LoadingTitle or "Loading..."
     local loadSubtitleText = cfg.LoadingSubtitle or "de mateo"
 
@@ -178,7 +182,7 @@ function Rayfield:CreateWindow(cfg)
     LSub.BackgroundTransparency = 1
     RGB_Objects[LSub] = "TextColor3"
 
-    -- Proceso síncrono de espera antes de mostrar la GUI
+    -- Espera síncrona del LoadingTime especificado o por defecto (3s)
     task.spawn(function()
         task.wait(loadingTime)
         Tween(LTitle, {0.3, Enum.EasingStyle.Quad}, {TextTransparency = 1})
@@ -186,7 +190,7 @@ function Rayfield:CreateWindow(cfg)
         task.wait(0.3)
         LoadHolder:Destroy()
 
-        -- Mostrar Ventana y Botón UI al finalizar la carga
+        -- Mostrar GUI y Botón UI
         MainFrame.Visible = true
         UIBtn.Visible = true
     end)
@@ -319,7 +323,7 @@ function Rayfield:CreateWindow(cfg)
             return { Set = Update }
         end
 
-        -- COLOR PICKER CORREGIDO CON PALETA HSV + ACEPTAR Y CANCELAR
+        -- COLOR PICKER NATIVO CON TODOS LOS COLORES + COMPATIBLE MÓVIL/TOUCH
         function TabObj:CreateColorpicker(cCfg)
             cCfg = cCfg or {}
             local currentColor = cCfg.Color or Color3.fromRGB(255, 0, 0)
@@ -348,30 +352,55 @@ function Rayfield:CreateWindow(cfg)
             toggleBtn.BackgroundTransparency = 1
             toggleBtn.Text = ""
 
-            -- Contenedor de Paleta y Botones
+            -- Contenedor
             local PickerContainer = Instance.new("Frame", f)
             PickerContainer.Size = UDim2.new(1, -16, 0, 122)
             PickerContainer.Position = UDim2.new(0, 8, 0, 32)
             PickerContainer.BackgroundTransparency = 1
 
-            local Palette = Instance.new("ImageLabel", PickerContainer)
+            -- PALETA DE COLORES NATIVA DE ROBLOX (UIGradient del arcoíris completo)
+            local Palette = Instance.new("Frame", PickerContainer)
             Palette.Size = UDim2.new(1, 0, 0, 90)
-            Palette.Position = UDim2.new(0, 0, 0, 0)
-            Palette.Image = "rbxassetid://4155801252" -- Imagen HSV válida de Roblox
             Palette.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-            Palette.BackgroundTransparency = 0
             Instance.new("UICorner", Palette).CornerRadius = UDim.new(0, 4)
 
+            local RainbowGradient = Instance.new("UIGradient", Palette)
+            RainbowGradient.Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+                ColorSequenceKeypoint.new(0.167, Color3.fromRGB(255, 255, 0)),
+                ColorSequenceKeypoint.new(0.333, Color3.fromRGB(0, 255, 0)),
+                ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 255)),
+                ColorSequenceKeypoint.new(0.667, Color3.fromRGB(0, 0, 255)),
+                ColorSequenceKeypoint.new(0.833, Color3.fromRGB(255, 0, 255)),
+                ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0))
+            })
+
+            -- Capa de sombreado vertical (Sombra/Saturación)
+            local DarkOverlay = Instance.new("Frame", Palette)
+            DarkOverlay.Size = UDim2.new(1, 0, 1, 0)
+            DarkOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+            DarkOverlay.BackgroundTransparency = 0
+            Instance.new("UICorner", DarkOverlay).CornerRadius = UDim.new(0, 4)
+
+            local DarkGradient = Instance.new("UIGradient", DarkOverlay)
+            DarkGradient.Rotation = 90
+            DarkGradient.Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 1), -- Transparente arriba (Luz)
+                NumberSequenceKeypoint.new(1, 0)  -- Sólido abajo (Oscuridad)
+            })
+
+            -- Circulito de Selección (Knob)
             local Knob = Instance.new("Frame", Palette)
-            Knob.Size = UDim2.new(0, 10, 0, 10)
-            Knob.Position = UDim2.new(0.5, -5, 0.5, -5)
+            Knob.Size = UDim2.new(0, 14, 0, 14)
+            Knob.Position = UDim2.new(0.5, -7, 0.5, -7)
             Knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-            Knob.ZIndex = 5
+            Knob.ZIndex = 10
             Instance.new("UICorner", Knob).CornerRadius = UDim.new(1, 0)
             local KnobStroke = Instance.new("UIStroke", Knob)
             KnobStroke.Color = Color3.fromRGB(0, 0, 0)
+            KnobStroke.Thickness = 2
 
-            -- Contenedor de Botones Aceptar / Cancelar
+            -- Botones Aceptar y Cancelar
             local BtnFrame = Instance.new("Frame", PickerContainer)
             BtnFrame.Size = UDim2.new(1, 0, 0, 22)
             BtnFrame.Position = UDim2.new(0, 0, 0, 96)
@@ -379,7 +408,6 @@ function Rayfield:CreateWindow(cfg)
 
             local AcceptBtn = Instance.new("TextButton", BtnFrame)
             AcceptBtn.Size = UDim2.new(0.48, 0, 1, 0)
-            AcceptBtn.Position = UDim2.new(0, 0, 0, 0)
             AcceptBtn.BackgroundColor3 = Color3.fromRGB(45, 140, 60)
             AcceptBtn.Text = "Aceptar"
             AcceptBtn.Font = Enum.Font.GothamBold
@@ -403,27 +431,36 @@ function Rayfield:CreateWindow(cfg)
                 local relX = math.clamp((input.Position.X - Palette.AbsolutePosition.X) / Palette.AbsoluteSize.X, 0, 1)
                 local relY = math.clamp((input.Position.Y - Palette.AbsolutePosition.Y) / Palette.AbsoluteSize.Y, 0, 1)
 
-                Knob.Position = UDim2.new(relX, -5, relY, -5)
-                tempColor = Color3.fromHSV(relX, 1 - relY, 1)
+                Knob.Position = UDim2.new(relX, -7, relY, -7)
+                tempColor = Color3.fromHSV(relX, 1, 1 - relY)
                 Preview.BackgroundColor3 = tempColor
             end
 
+            -- Soporte Táctil (Móvil) y Ratón (PC)
+            local function IsValidInput(inp)
+                return inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch
+            end
+
+            local function IsMoveInput(inp)
+                return inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch
+            end
+
             Palette.InputBegan:Connect(function(inp)
-                if inp.UserInputType == Enum.UserInputType.MouseButton1 then
+                if IsValidInput(inp) then
                     dragging = true
                     UpdateColorFromInput(inp)
                 end
             end)
 
-            UserInputService.InputEnded:Connect(function(inp)
-                if inp.UserInputType == Enum.UserInputType.MouseButton1 then
-                    dragging = false
+            UserInputService.InputChanged:Connect(function(inp)
+                if dragging and IsMoveInput(inp) then
+                    UpdateColorFromInput(inp)
                 end
             end)
 
-            UserInputService.InputChanged:Connect(function(inp)
-                if dragging and inp.UserInputType == Enum.UserInputType.MouseMovement then
-                    UpdateColorFromInput(inp)
+            UserInputService.InputEnded:Connect(function(inp)
+                if IsValidInput(inp) then
+                    dragging = false
                 end
             end)
 
