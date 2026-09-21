@@ -1,5 +1,5 @@
 --[[
-    Rayfield UI Library - Edición RGB + Custom ColorPicker & Pure Text Loading
+    Rayfield UI Library - Fix ColorPicker + Synchronized Loading Screen
 --]]
 
 local TweenService = game:GetService("TweenService")
@@ -7,12 +7,6 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
-
-local function _0xS(_b)
-    local _s = ""
-    for _i = 1, #_b do _s = _s .. string.char(_b[_i]) end
-    return _s
-end
 
 local _0xT = {
     Bg = Color3.fromRGB(18, 18, 20),
@@ -47,23 +41,24 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.Parent = ParentGui
 
--- Botón "UI" Flotante (Negro con Borde RGB)
+-- Botón "UI" Flotante (Inicialmente Oculto)
 local UIBtn = Instance.new("TextButton")
 UIBtn.Name = "ToggleUI_RGB"
 UIBtn.Size = UDim2.new(0, 42, 0, 42)
 UIBtn.Position = UDim2.new(0, 10, 0.5, -21)
-UIBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- Negro Sólido
+UIBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 UIBtn.Text = "UI"
 UIBtn.Font = Enum.Font.GothamBold
 UIBtn.TextSize = 14
 UIBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 UIBtn.ZIndex = 9999
+UIBtn.Visible = false -- Oculto hasta terminar el tiempo de carga
 UIBtn.Parent = ScreenGui
 
 Instance.new("UICorner", UIBtn).CornerRadius = UDim.new(0, 8)
 local UIBStroke = Instance.new("UIStroke", UIBtn)
 UIBStroke.Thickness = 2
-RGB_Objects[UIBStroke] = "Color" -- Borde RGB
+RGB_Objects[UIBStroke] = "Color"
 
 -- Contenedor de Notificaciones
 local NotifyHolder = Instance.new("Frame", ScreenGui)
@@ -141,8 +136,22 @@ end
 function Rayfield:CreateWindow(cfg)
     cfg = cfg or {}
     local mainVisible = true
+    local loadingTime = cfg.LoadingTime or 3
 
-    -- EFECTO DE CARGA: Solo Texto RGB (Sin Pantallas / Sin Fondos)
+    -- Ventana Principal Chica (Inicialmente Oculta)
+    local MainFrame = Instance.new("Frame", ScreenGui)
+    MainFrame.Name = "MainFrame"
+    MainFrame.Size = UDim2.new(0, 460, 0, 290)
+    MainFrame.Position = UDim2.new(0.5, -230, 0.5, -145)
+    MainFrame.BackgroundColor3 = _0xT.Bg
+    MainFrame.BorderSizePixel = 0
+    MainFrame.Visible = false -- Oculto hasta que termine LoadingTime
+    Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
+    
+    local MainStroke = Instance.new("UIStroke", MainFrame)
+    MainStroke.Color = _0xT.Br
+
+    -- CARGA SOLO TEXTO RGB (Sin pantallas ni fondos)
     local loadTitleText = cfg.LoadingTitle or "Loading..."
     local loadSubtitleText = cfg.LoadingSubtitle or "de mateo"
 
@@ -158,7 +167,7 @@ function Rayfield:CreateWindow(cfg)
     LTitle.TextSize = 26
     LTitle.Size = UDim2.new(1, 0, 0, 30)
     LTitle.BackgroundTransparency = 1
-    RGB_Objects[LTitle] = "TextColor3" -- Texto RGB
+    RGB_Objects[LTitle] = "TextColor3"
 
     local LSub = Instance.new("TextLabel", LoadHolder)
     LSub.Text = loadSubtitleText
@@ -167,26 +176,20 @@ function Rayfield:CreateWindow(cfg)
     LSub.Position = UDim2.new(0, 0, 0, 30)
     LSub.Size = UDim2.new(1, 0, 0, 20)
     LSub.BackgroundTransparency = 1
-    RGB_Objects[LSub] = "TextColor3" -- Subtítulo RGB
+    RGB_Objects[LSub] = "TextColor3"
 
-    task.delay(2, function()
-        Tween(LTitle, {0.4, Enum.EasingStyle.Quad}, {TextTransparency = 1})
-        Tween(LSub, {0.4, Enum.EasingStyle.Quad}, {TextTransparency = 1})
-        task.wait(0.4)
+    -- Proceso síncrono de espera antes de mostrar la GUI
+    task.spawn(function()
+        task.wait(loadingTime)
+        Tween(LTitle, {0.3, Enum.EasingStyle.Quad}, {TextTransparency = 1})
+        Tween(LSub, {0.3, Enum.EasingStyle.Quad}, {TextTransparency = 1})
+        task.wait(0.3)
         LoadHolder:Destroy()
-    end)
 
-    -- Ventana Principal Chica
-    local MainFrame = Instance.new("Frame", ScreenGui)
-    MainFrame.Name = "MainFrame"
-    MainFrame.Size = UDim2.new(0, 460, 0, 290)
-    MainFrame.Position = UDim2.new(0.5, -230, 0.5, -145)
-    MainFrame.BackgroundColor3 = _0xT.Bg
-    MainFrame.BorderSizePixel = 0
-    Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
-    
-    local MainStroke = Instance.new("UIStroke", MainFrame)
-    MainStroke.Color = _0xT.Br
+        -- Mostrar Ventana y Botón UI al finalizar la carga
+        MainFrame.Visible = true
+        UIBtn.Visible = true
+    end)
 
     -- Barra Superior
     local TopBar = Instance.new("Frame", MainFrame)
@@ -257,7 +260,6 @@ function Rayfield:CreateWindow(cfg)
         TabBtn.MouseButton1Click:Connect(Select)
         if #Window.Tabs == 0 then Select() end
 
-        -- Componentes Estándar
         function TabObj:CreateSection(secName)
             local f = Instance.new("Frame", Page)
             f.Size = UDim2.new(1, -6, 0, 18); f.BackgroundTransparency = 1
@@ -317,10 +319,11 @@ function Rayfield:CreateWindow(cfg)
             return { Set = Update }
         end
 
-        -- COLOR PICKER INTERACTIVO CON PALETA, CIRCULITO LIMITABLE Y PREVIEW
+        -- COLOR PICKER CORREGIDO CON PALETA HSV + ACEPTAR Y CANCELAR
         function TabObj:CreateColorpicker(cCfg)
             cCfg = cCfg or {}
             local currentColor = cCfg.Color or Color3.fromRGB(255, 0, 0)
+            local tempColor = currentColor
             local expanded = false
 
             local f = Instance.new("Frame", Page)
@@ -334,59 +337,75 @@ function Rayfield:CreateWindow(cfg)
             l.Font = Enum.Font.GothamMedium; l.TextSize = 10; l.TextColor3 = _0xT.Tx
             l.Position = UDim2.new(0, 8, 0, 0); l.Size = UDim2.new(0.6, 0, 0, 28); l.BackgroundTransparency = 1; l.TextXAlignment = Enum.TextXAlignment.Left
 
-            -- Cuadro de Vista Previa (Preview)
             local Preview = Instance.new("Frame", f)
             Preview.Size = UDim2.new(0, 24, 0, 14)
             Preview.Position = UDim2.new(1, -32, 0, 7)
             Preview.BackgroundColor3 = currentColor
             Instance.new("UICorner", Preview).CornerRadius = UDim.new(0, 3)
-            local PrevStroke = Instance.new("UIStroke", Preview)
-            PrevStroke.Color = _0xT.Br
 
             local toggleBtn = Instance.new("TextButton", f)
             toggleBtn.Size = UDim2.new(1, 0, 0, 28)
             toggleBtn.BackgroundTransparency = 1
             toggleBtn.Text = ""
 
-            -- Canvas de Paleta
+            -- Contenedor de Paleta y Botones
             local PickerContainer = Instance.new("Frame", f)
-            PickerContainer.Size = UDim2.new(1, -16, 0, 95)
+            PickerContainer.Size = UDim2.new(1, -16, 0, 122)
             PickerContainer.Position = UDim2.new(0, 8, 0, 32)
             PickerContainer.BackgroundTransparency = 1
 
             local Palette = Instance.new("ImageLabel", PickerContainer)
-            Palette.Size = UDim2.new(1, 0, 1, 0)
-            Palette.Image = "rbxassetid://6027284224" -- Textura HSV Standard
-            Palette.BackgroundTransparency = 1
+            Palette.Size = UDim2.new(1, 0, 0, 90)
+            Palette.Position = UDim2.new(0, 0, 0, 0)
+            Palette.Image = "rbxassetid://4155801252" -- Imagen HSV válida de Roblox
+            Palette.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            Palette.BackgroundTransparency = 0
             Instance.new("UICorner", Palette).CornerRadius = UDim.new(0, 4)
 
-            -- Circulito de Selección (Limitable)
             local Knob = Instance.new("Frame", Palette)
-            Knob.Size = UDim2.new(0, 12, 0, 12)
-            Knob.Position = UDim2.new(0.5, -6, 0.5, -6)
+            Knob.Size = UDim2.new(0, 10, 0, 10)
+            Knob.Position = UDim2.new(0.5, -5, 0.5, -5)
             Knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             Knob.ZIndex = 5
             Instance.new("UICorner", Knob).CornerRadius = UDim.new(1, 0)
             local KnobStroke = Instance.new("UIStroke", Knob)
             KnobStroke.Color = Color3.fromRGB(0, 0, 0)
-            KnobStroke.Thickness = 1.5
+
+            -- Contenedor de Botones Aceptar / Cancelar
+            local BtnFrame = Instance.new("Frame", PickerContainer)
+            BtnFrame.Size = UDim2.new(1, 0, 0, 22)
+            BtnFrame.Position = UDim2.new(0, 0, 0, 96)
+            BtnFrame.BackgroundTransparency = 1
+
+            local AcceptBtn = Instance.new("TextButton", BtnFrame)
+            AcceptBtn.Size = UDim2.new(0.48, 0, 1, 0)
+            AcceptBtn.Position = UDim2.new(0, 0, 0, 0)
+            AcceptBtn.BackgroundColor3 = Color3.fromRGB(45, 140, 60)
+            AcceptBtn.Text = "Aceptar"
+            AcceptBtn.Font = Enum.Font.GothamBold
+            AcceptBtn.TextSize = 10
+            AcceptBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            Instance.new("UICorner", AcceptBtn).CornerRadius = UDim.new(0, 4)
+
+            local CancelBtn = Instance.new("TextButton", BtnFrame)
+            CancelBtn.Size = UDim2.new(0.48, 0, 1, 0)
+            CancelBtn.Position = UDim2.new(0.52, 0, 0, 0)
+            CancelBtn.BackgroundColor3 = Color3.fromRGB(160, 45, 45)
+            CancelBtn.Text = "Cancelar"
+            CancelBtn.Font = Enum.Font.GothamBold
+            CancelBtn.TextSize = 10
+            CancelBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            Instance.new("UICorner", CancelBtn).CornerRadius = UDim.new(0, 4)
 
             local dragging = false
 
             local function UpdateColorFromInput(input)
-                -- Restricción/Límite estricto dentro de la paleta (0 a 1)
                 local relX = math.clamp((input.Position.X - Palette.AbsolutePosition.X) / Palette.AbsoluteSize.X, 0, 1)
                 local relY = math.clamp((input.Position.Y - Palette.AbsolutePosition.Y) / Palette.AbsoluteSize.Y, 0, 1)
 
-                -- Movimiento del circulito dentro de los bordes
-                Knob.Position = UDim2.new(relX, -6, relY, -6)
-
-                -- Cálculo de Color HSV
-                currentColor = Color3.fromHSV(relX, 1 - relY, 1)
-                Preview.BackgroundColor3 = currentColor
-
-                if cCfg.Flag then Rayfield.Flags[cCfg.Flag] = currentColor end
-                if cCfg.Callback then cCfg.Callback(currentColor) end
+                Knob.Position = UDim2.new(relX, -5, relY, -5)
+                tempColor = Color3.fromHSV(relX, 1 - relY, 1)
+                Preview.BackgroundColor3 = tempColor
             end
 
             Palette.InputBegan:Connect(function(inp)
@@ -408,10 +427,29 @@ function Rayfield:CreateWindow(cfg)
                 end
             end)
 
+            AcceptBtn.MouseButton1Click:Connect(function()
+                currentColor = tempColor
+                Preview.BackgroundColor3 = currentColor
+                expanded = false
+                Tween(f, {0.2, Enum.EasingStyle.Quad}, {Size = UDim2.new(1, -6, 0, 28)})
+                if cCfg.Flag then Rayfield.Flags[cCfg.Flag] = currentColor end
+                if cCfg.Callback then cCfg.Callback(currentColor) end
+            end)
+
+            CancelBtn.MouseButton1Click:Connect(function()
+                tempColor = currentColor
+                Preview.BackgroundColor3 = currentColor
+                expanded = false
+                Tween(f, {0.2, Enum.EasingStyle.Quad}, {Size = UDim2.new(1, -6, 0, 28)})
+            end)
+
             toggleBtn.MouseButton1Click:Connect(function()
                 expanded = not expanded
+                if expanded then
+                    tempColor = currentColor
+                end
                 Tween(f, {0.2, Enum.EasingStyle.Quad}, {
-                    Size = expanded and UDim2.new(1, -6, 0, 135) or UDim2.new(1, -6, 0, 28)
+                    Size = expanded and UDim2.new(1, -6, 0, 160) or UDim2.new(1, -6, 0, 28)
                 })
             end)
 
