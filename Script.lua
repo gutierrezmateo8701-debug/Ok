@@ -1,90 +1,116 @@
---[[
-    M4teoUI v2
-    Original Roblox UI Library
-    Executor-oriented
-    API estilo Rayfield, implementación propia
-
-    Características:
-    • Window
-    • Tabs
-    • Sections
-    • Labels
-    • Paragraphs
-    • Buttons
-    • Toggles
-    • Sliders
-    • Dropdowns
-    • Inputs
-    • Keybinds
-    • ColorPicker
-    • Notifications
-    • Themes
-    • Flags
-    • Options
-    • Minimize
-    • Destroy
-    • Search
-    • Drag
-    • Animations
-    • Mobile support
-    • Config encode/decode
-]]
+--// M4teoUI
+--// Script.lua
+--// Compact / Mobile Friendly / Scrollable Tabs + Scrollable Content
+--// Rayfield-like API
+--// No Loading Screen
 
 local M4teoUI = {}
 
---// Services
+--==================================================
+-- SERVICES
+--==================================================
+
+local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
-local HttpService = game:GetService("HttpService")
 local CoreGui = game:GetService("CoreGui")
 
---// Storage
+--==================================================
+-- DATA
+--==================================================
+
 M4teoUI.Flags = {}
 M4teoUI.Options = {}
-M4teoUI.Themes = {}
 M4teoUI.Windows = {}
-M4teoUI.Connections = {}
+M4teoUI.Themes = {}
 
---//========================================================
---// Utility
---//========================================================
+local Connections = {}
+
+--==================================================
+-- THEME
+--==================================================
+
+M4teoUI.Theme = {
+    Background = Color3.fromRGB(17, 17, 22),
+    Sidebar = Color3.fromRGB(21, 21, 27),
+    Element = Color3.fromRGB(29, 29, 37),
+    ElementHover = Color3.fromRGB(38, 38, 48),
+    Accent = Color3.fromRGB(0, 170, 255),
+    Text = Color3.fromRGB(245, 245, 250),
+    Muted = Color3.fromRGB(165, 165, 175),
+    Border = Color3.fromRGB(55, 55, 65),
+    ToggleOff = Color3.fromRGB(25, 25, 32),
+    ToggleOn = Color3.fromRGB(0, 170, 255)
+}
+
+M4teoUI.Themes.Dark = {
+    Background = Color3.fromRGB(17, 17, 22),
+    Sidebar = Color3.fromRGB(21, 21, 27),
+    Element = Color3.fromRGB(29, 29, 37),
+    ElementHover = Color3.fromRGB(38, 38, 48),
+    Accent = Color3.fromRGB(0, 170, 255),
+    Text = Color3.fromRGB(245, 245, 250),
+    Muted = Color3.fromRGB(165, 165, 175),
+    Border = Color3.fromRGB(55, 55, 65),
+    ToggleOff = Color3.fromRGB(25, 25, 32),
+    ToggleOn = Color3.fromRGB(0, 170, 255)
+}
+
+M4teoUI.Themes.Purple = {
+    Background = Color3.fromRGB(18, 16, 24),
+    Sidebar = Color3.fromRGB(23, 20, 31),
+    Element = Color3.fromRGB(32, 28, 42),
+    ElementHover = Color3.fromRGB(43, 37, 55),
+    Accent = Color3.fromRGB(160, 90, 255),
+    Text = Color3.fromRGB(245, 242, 250),
+    Muted = Color3.fromRGB(170, 165, 180),
+    Border = Color3.fromRGB(65, 55, 78),
+    ToggleOff = Color3.fromRGB(27, 24, 34),
+    ToggleOn = Color3.fromRGB(160, 90, 255)
+}
+
+M4teoUI.Themes.Red = {
+    Background = Color3.fromRGB(23, 16, 17),
+    Sidebar = Color3.fromRGB(29, 19, 21),
+    Element = Color3.fromRGB(40, 26, 29),
+    ElementHover = Color3.fromRGB(53, 34, 38),
+    Accent = Color3.fromRGB(255, 75, 85),
+    Text = Color3.fromRGB(250, 242, 243),
+    Muted = Color3.fromRGB(180, 165, 168),
+    Border = Color3.fromRGB(78, 53, 57),
+    ToggleOff = Color3.fromRGB(33, 23, 25),
+    ToggleOn = Color3.fromRGB(255, 75, 85)
+}
+
+M4teoUI.Themes.Green = {
+    Background = Color3.fromRGB(15, 21, 18),
+    Sidebar = Color3.fromRGB(19, 27, 22),
+    Element = Color3.fromRGB(25, 37, 29),
+    ElementHover = Color3.fromRGB(34, 49, 39),
+    Accent = Color3.fromRGB(60, 210, 125),
+    Text = Color3.fromRGB(242, 250, 245),
+    Muted = Color3.fromRGB(160, 180, 168),
+    Border = Color3.fromRGB(50, 76, 60),
+    ToggleOff = Color3.fromRGB(22, 31, 25),
+    ToggleOn = Color3.fromRGB(60, 210, 125)
+}
+
+--==================================================
+-- UTILITIES
+--==================================================
 
 local function Safe(callback, ...)
-    if typeof(callback) ~= "function" then
+    if type(callback) ~= "function" then
         return
     end
 
-    local args = table.pack(...)
-
-    task.spawn(function()
-        pcall(function()
-            callback(table.unpack(args, 1, args.n))
-        end)
-    end)
+    task.spawn(function(...)
+        pcall(callback, ...)
+    end, ...)
 end
 
-local function Connect(signal, callback, storage)
-    local connection = signal:Connect(callback)
-
-    storage = storage or M4teoUI.Connections
-
-    table.insert(storage, connection)
-
-    return connection
-end
-
-local function DisconnectAll(storage)
-    for _, connection in ipairs(storage or {}) do
-        pcall(function()
-            connection:Disconnect()
-        end)
-    end
-
-    table.clear(storage or {})
-end
-
-local function Create(class, properties, parent)
-    local object = Instance.new(class)
+local function Create(className, properties, parent)
+    local object = Instance.new(className)
 
     for property, value in pairs(properties or {}) do
         pcall(function()
@@ -92,184 +118,112 @@ local function Create(class, properties, parent)
         end)
     end
 
-    if parent then
-        object.Parent = parent
-    end
+    object.Parent = parent
 
     return object
 end
 
 local function Corner(object, radius)
-    return Create("UICorner", {
-        CornerRadius = UDim.new(0, radius or 8)
-    }, object)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, radius or 8)
+    corner.Parent = object
+    return corner
 end
 
-local function Stroke(object, color, thickness, transparency)
-    return Create("UIStroke", {
-        Color = color or Color3.new(1, 1, 1),
-        Thickness = thickness or 1,
-        Transparency = transparency or 0
-    }, object)
+local function AddStroke(object, color, thickness, transparency)
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = color or M4teoUI.Theme.Border
+    stroke.Thickness = thickness or 1
+    stroke.Transparency = transparency or 0
+    stroke.Parent = object
+    return stroke
 end
 
-local function Padding(object, left, right, top, bottom)
-    return Create("UIPadding", {
-        PaddingLeft = UDim.new(0, left or 0),
-        PaddingRight = UDim.new(0, right or 0),
-        PaddingTop = UDim.new(0, top or 0),
-        PaddingBottom = UDim.new(0, bottom or 0)
-    }, object)
+local function AddPadding(object, left, top, right, bottom)
+    local padding = Instance.new("UIPadding")
+
+    padding.PaddingLeft = UDim.new(0, left or 0)
+    padding.PaddingTop = UDim.new(0, top or 0)
+    padding.PaddingRight = UDim.new(0, right or 0)
+    padding.PaddingBottom = UDim.new(0, bottom or 0)
+
+    padding.Parent = object
+
+    return padding
 end
 
-local function Tween(object, duration, properties, style, direction)
-    if not object then
-        return
-    end
-
-    local info = TweenInfo.new(
-        duration or 0.2,
-        style or Enum.EasingStyle.Quad,
-        direction or Enum.EasingDirection.Out
+local function Tween(object, duration, properties)
+    local tween = TweenService:Create(
+        object,
+        TweenInfo.new(
+            duration or 0.15,
+            Enum.EasingStyle.Quint,
+            Enum.EasingDirection.Out
+        ),
+        properties
     )
 
-    local animation = TweenService:Create(object, info, properties)
+    tween:Play()
 
-    animation:Play()
-
-    return animation
+    return tween
 end
 
-local function CopyTable(original)
-    local copy = {}
-
-    for key, value in pairs(original) do
-        if type(value) == "table" then
-            copy[key] = CopyTable(value)
-        else
-            copy[key] = value
-        end
+local function DisconnectAll(list)
+    for _, connection in ipairs(list or {}) do
+        pcall(function()
+            connection:Disconnect()
+        end)
     end
 
-    return copy
-end
-
-local function IsMobile()
-    return UserInputService.TouchEnabled
-        and not UserInputService.KeyboardEnabled
+    table.clear(list or {})
 end
 
 local function GetGuiParent()
-    local success, result = pcall(function()
-        if gethui then
-            return gethui()
-        end
-    end)
+    if type(gethui) == "function" then
+        local success, result = pcall(gethui)
 
-    if success and result then
-        return result
+        if success and result then
+            return result
+        end
     end
 
     return CoreGui
 end
 
---//========================================================
---// Themes
---//========================================================
+local function IsMobile()
+    local camera = workspace.CurrentCamera
 
-local Themes = {
+    if not camera then
+        return false
+    end
 
-    Dark = {
-        Background = Color3.fromRGB(18, 18, 22),
-        Sidebar = Color3.fromRGB(22, 22, 27),
-        Element = Color3.fromRGB(28, 28, 34),
-        ElementHover = Color3.fromRGB(37, 37, 45),
-
-        Accent = Color3.fromRGB(0, 170, 255),
-        AccentDark = Color3.fromRGB(0, 120, 210),
-
-        Text = Color3.fromRGB(245, 245, 248),
-        Muted = Color3.fromRGB(155, 155, 165),
-
-        Border = Color3.fromRGB(55, 55, 65),
-
-        Success = Color3.fromRGB(70, 200, 120),
-        Danger = Color3.fromRGB(220, 80, 90),
-        Warning = Color3.fromRGB(235, 180, 70)
-    },
-
-    Purple = {
-        Background = Color3.fromRGB(21, 18, 27),
-        Sidebar = Color3.fromRGB(28, 22, 36),
-        Element = Color3.fromRGB(38, 29, 49),
-        ElementHover = Color3.fromRGB(51, 39, 65),
-
-        Accent = Color3.fromRGB(170, 90, 255),
-        AccentDark = Color3.fromRGB(120, 55, 220),
-
-        Text = Color3.fromRGB(250, 245, 255),
-        Muted = Color3.fromRGB(175, 160, 190),
-
-        Border = Color3.fromRGB(75, 55, 95),
-
-        Success = Color3.fromRGB(70, 200, 120),
-        Danger = Color3.fromRGB(220, 80, 90),
-        Warning = Color3.fromRGB(235, 180, 70)
-    },
-
-    Blue = {
-        Background = Color3.fromRGB(15, 20, 30),
-        Sidebar = Color3.fromRGB(18, 25, 38),
-        Element = Color3.fromRGB(24, 33, 50),
-        ElementHover = Color3.fromRGB(33, 44, 65),
-
-        Accent = Color3.fromRGB(65, 150, 255),
-        AccentDark = Color3.fromRGB(35, 105, 220),
-
-        Text = Color3.fromRGB(245, 248, 255),
-        Muted = Color3.fromRGB(155, 170, 190),
-
-        Border = Color3.fromRGB(50, 75, 110),
-
-        Success = Color3.fromRGB(70, 200, 120),
-        Danger = Color3.fromRGB(220, 80, 90),
-        Warning = Color3.fromRGB(235, 180, 70)
-    },
-
-    Red = {
-        Background = Color3.fromRGB(25, 17, 19),
-        Sidebar = Color3.fromRGB(34, 21, 24),
-        Element = Color3.fromRGB(48, 27, 31),
-        ElementHover = Color3.fromRGB(64, 35, 40),
-
-        Accent = Color3.fromRGB(255, 75, 90),
-        AccentDark = Color3.fromRGB(210, 45, 60),
-
-        Text = Color3.fromRGB(255, 245, 246),
-        Muted = Color3.fromRGB(190, 160, 165),
-
-        Border = Color3.fromRGB(100, 55, 62),
-
-        Success = Color3.fromRGB(70, 200, 120),
-        Danger = Color3.fromRGB(255, 70, 80),
-        Warning = Color3.fromRGB(235, 180, 70)
-    }
-}
-
-M4teoUI.Themes = Themes
-M4teoUI.Theme = CopyTable(Themes.Dark)
-
---//========================================================
---// GUI
---//========================================================
-
-local Existing = GetGuiParent():FindFirstChild("M4teoUI")
-
-if Existing then
-    pcall(function()
-        Existing:Destroy()
-    end)
+    return camera.ViewportSize.X < 650
 end
+
+local function NormalizeColor(value)
+    if typeof(value) == "Color3" then
+        return value
+    end
+
+    return M4teoUI.Theme.Accent
+end
+
+--==================================================
+-- DESTROY OLD GUI
+--==================================================
+
+pcall(function()
+    local parent = GetGuiParent()
+    local old = parent:FindFirstChild("M4teoUI")
+
+    if old then
+        old:Destroy()
+    end
+end)
+
+--==================================================
+-- SCREEN GUI
+--==================================================
 
 local ScreenGui = Create("ScreenGui", {
     Name = "M4teoUI",
@@ -278,46 +232,128 @@ local ScreenGui = Create("ScreenGui", {
     ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 }, GetGuiParent())
 
-M4teoUI.Gui = ScreenGui
+--==================================================
+-- NOTIFICATIONS
+--==================================================
 
---//========================================================
---// Theme API
---//========================================================
+local NotificationHolder = Create("Frame", {
+    Name = "Notifications",
+    AnchorPoint = Vector2.new(1, 0),
+    Position = UDim2.new(1, -12, 0, 12),
+    Size = UDim2.fromOffset(280, 400),
+    BackgroundTransparency = 1
+}, ScreenGui)
 
-function M4teoUI:SetTheme(theme)
-    if typeof(theme) == "string" then
-        theme = self.Themes[theme]
-    end
+Create("UIListLayout", {
+    Padding = UDim.new(0, 7),
+    SortOrder = Enum.SortOrder.LayoutOrder,
+    VerticalAlignment = Enum.VerticalAlignment.Top
+}, NotificationHolder)
 
-    if typeof(theme) ~= "table" then
-        return
-    end
+function M4teoUI:Notify(config)
+    config = config or {}
 
-    self.Theme = CopyTable(theme)
+    local title = tostring(config.Title or "M4teoUI")
+    local content = tostring(config.Content or "")
+    local duration = tonumber(config.Duration or 3) or 3
 
-    for _, window in ipairs(self.Windows) do
-        if window._ApplyTheme then
-            Safe(window._ApplyTheme)
+    local notification = Create("Frame", {
+        Size = UDim2.new(1, 0, 0, 72),
+        BackgroundColor3 = self.Theme.Element,
+        BorderSizePixel = 0
+    }, NotificationHolder)
+
+    Corner(notification, 10)
+
+    local stroke = AddStroke(
+        notification,
+        self.Theme.Border,
+        1
+    )
+
+    local bar = Create("Frame", {
+        Size = UDim2.new(0, 3, 1, -16),
+        Position = UDim2.fromOffset(6, 8),
+        BackgroundColor3 = self.Theme.Accent,
+        BorderSizePixel = 0
+    }, notification)
+
+    Corner(bar, 3)
+
+    Create("TextLabel", {
+        Size = UDim2.new(1, -35, 0, 22),
+        Position = UDim2.fromOffset(18, 8),
+        BackgroundTransparency = 1,
+        Text = title,
+        TextColor3 = self.Theme.Text,
+        TextSize = 13,
+        Font = Enum.Font.GothamBold,
+        TextXAlignment = Enum.TextXAlignment.Left
+    }, notification)
+
+    Create("TextLabel", {
+        Size = UDim2.new(1, -35, 0, 32),
+        Position = UDim2.fromOffset(18, 31),
+        BackgroundTransparency = 1,
+        Text = content,
+        TextColor3 = self.Theme.Muted,
+        TextSize = 11,
+        Font = Enum.Font.Gotham,
+        TextWrapped = true,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextYAlignment = Enum.TextYAlignment.Top
+    }, notification)
+
+    notification.Position = UDim2.new(1, 40, 0, 0)
+
+    Tween(notification, 0.25, {
+        Position = UDim2.new(0, 0, 0, 0)
+    })
+
+    task.delay(duration, function()
+        if notification and notification.Parent then
+            Tween(notification, 0.2, {
+                Position = UDim2.new(1, 40, 0, 0),
+                BackgroundTransparency = 1
+            })
+
+            task.wait(0.22)
+
+            if notification then
+                notification:Destroy()
+            end
         end
-    end
+    end)
 end
 
-function M4teoUI:SetThemeByName(name)
-    if self.Themes[name] then
-        self:SetTheme(self.Themes[name])
-    end
-end
+--==================================================
+-- THEME API
+--==================================================
 
 function M4teoUI:RegisterTheme(name, theme)
-    if typeof(name) ~= "string" then
+    if type(name) ~= "string" or type(theme) ~= "table" then
         return
     end
 
-    if typeof(theme) ~= "table" then
+    self.Themes[name] = theme
+end
+
+function M4teoUI:SetTheme(name)
+    local theme = self.Themes[name]
+
+    if not theme then
         return
     end
 
-    self.Themes[name] = CopyTable(theme)
+    for key, value in pairs(theme) do
+        self.Theme[key] = value
+    end
+
+    for _, window in ipairs(self.Windows) do
+        if window and window.ApplyTheme then
+            pcall(window.ApplyTheme)
+        end
+    end
 end
 
 function M4teoUI:GetThemes()
@@ -332,157 +368,70 @@ function M4teoUI:GetThemes()
     return result
 end
 
---//========================================================
---// Notification System
---//========================================================
-
-local NotificationHolder
-
-local function GetNotificationHolder()
-    if NotificationHolder then
-        return NotificationHolder
-    end
-
-    NotificationHolder = Create("Frame", {
-        Name = "NotificationHolder",
-        BackgroundTransparency = 1,
-        AnchorPoint = Vector2.new(1, 1),
-        Position = UDim2.new(1, -18, 1, -18),
-        Size = UDim2.new(0, 330, 0, 400),
-        ZIndex = 1000
-    }, ScreenGui)
-
-    Create("UIListLayout", {
-        Padding = UDim.new(0, 8),
-        FillDirection = Enum.FillDirection.Vertical,
-        HorizontalAlignment = Enum.HorizontalAlignment.Right,
-        VerticalAlignment = Enum.VerticalAlignment.Bottom
-    }, NotificationHolder)
-
-    return NotificationHolder
-end
-
-function M4teoUI:Notify(data)
-    data = data or {}
-
-    local holder = GetNotificationHolder()
-
-    local notification = Create("Frame", {
-        BackgroundColor3 = self.Theme.Element,
-        BorderSizePixel = 0,
-        Size = UDim2.new(0, 320, 0, 78),
-        BackgroundTransparency = 0.02,
-        ZIndex = 1001
-    }, holder)
-
-    Corner(notification, 10)
-
-    local notificationStroke = Stroke(
-        notification,
-        self.Theme.Border,
-        1,
-        0.1
-    )
-
-    local title = Create("TextLabel", {
-        BackgroundTransparency = 1,
-        Position = UDim2.new(0, 14, 0, 9),
-        Size = UDim2.new(1, -45, 0, 22),
-        Font = Enum.Font.GothamBold,
-        Text = data.Title or "M4teoUI",
-        TextColor3 = self.Theme.Text,
-        TextSize = 14,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        ZIndex = 1002
-    }, notification)
-
-    local content = Create("TextLabel", {
-        BackgroundTransparency = 1,
-        Position = UDim2.new(0, 14, 0, 31),
-        Size = UDim2.new(1, -28, 0, 37),
-        Font = Enum.Font.Gotham,
-        Text = data.Content or "",
-        TextColor3 = self.Theme.Muted,
-        TextSize = 11,
-        TextWrapped = true,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        TextYAlignment = Enum.TextYAlignment.Top,
-        ZIndex = 1002
-    }, notification)
-
-    local close = Create("TextButton", {
-        BackgroundTransparency = 1,
-        Position = UDim2.new(1, -30, 0, 7),
-        Size = UDim2.new(0, 24, 0, 24),
-        Font = Enum.Font.GothamBold,
-        Text = "×",
-        TextColor3 = self.Theme.Muted,
-        TextSize = 16,
-        AutoButtonColor = false,
-        ZIndex = 1003
-    }, notification)
-
-    notification.Position = UDim2.new(1, 30, 0, 0)
-
-    Tween(notification, 0.25, {
-        Position = UDim2.new(0, 0, 0, 0)
-    }, Enum.EasingStyle.Quart)
-
-    local closed = false
-
-    local function remove()
-        if closed then
-            return
-        end
-
-        closed = true
-
-        Tween(notification, 0.18, {
-            Position = UDim2.new(1, 30, 0, 0),
-            BackgroundTransparency = 1
-        }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-
-        task.delay(0.2, function()
-            pcall(function()
-                notification:Destroy()
-            end)
-        end)
-    end
-
-    Connect(close.MouseButton1Click, remove)
-
-    task.delay(tonumber(data.Duration) or 3, remove)
-end
-
---//========================================================
---// Window
---//========================================================
+--==================================================
+-- CREATE WINDOW
+--==================================================
 
 function M4teoUI:CreateWindow(config)
-
     config = config or {}
 
-    local Window = {}
+    local window = {}
 
-    Window._Connections = {}
-    Window._Tabs = {}
-    Window._Destroyed = false
-    Window._Visible = true
+    local title = tostring(
+        config.Name
+        or config.Title
+        or "M4teoUI"
+    )
 
-    local mobile = IsMobile()
+    local subtitle = tostring(
+        config.Subtitle
+        or config.LoadingSubtitle
+        or "Universal"
+    )
 
-    local width = tonumber(config.Width)
-        or (mobile and 390 or 560)
+    local camera = workspace.CurrentCamera
 
-    local height = tonumber(config.Height)
-        or (mobile and 470 or 400)
+    local viewport = camera
+        and camera.ViewportSize
+        or Vector2.new(800, 600)
 
-    --// Main
+    local width = math.clamp(
+        viewport.X * 0.82,
+        330,
+        430
+    )
+
+    local height = math.clamp(
+        viewport.Y * 0.62,
+        260,
+        330
+    )
+
+    if viewport.X < 500 then
+        width = math.min(
+            width,
+            viewport.X - 24
+        )
+    end
+
+    if viewport.Y < 500 then
+        height = math.min(
+            height,
+            viewport.Y - 80
+        )
+    end
+
+    width = math.floor(width)
+    height = math.floor(height)
+
     local Main = Create("Frame", {
         Name = "Window",
         AnchorPoint = Vector2.new(0.5, 0.5),
-        Position = UDim2.new(0.5, 0, 0.5, 0),
-        Size = UDim2.new(0, width, 0, height),
+        Position = UDim2.fromScale(0.5, 0.5),
+        Size = UDim2.fromOffset(
+            width,
+            height
+        ),
         BackgroundColor3 = self.Theme.Background,
         BorderSizePixel = 0,
         ClipsDescendants = true
@@ -490,955 +439,1066 @@ function M4teoUI:CreateWindow(config)
 
     Corner(Main, 12)
 
-    local MainStroke = Stroke(
+    local MainStroke = AddStroke(
         Main,
         self.Theme.Border,
-        1,
-        0
+        1
     )
 
-    --// Topbar
+    --==================================================
+    -- TOPBAR
+    --==================================================
+
     local Topbar = Create("Frame", {
-        BackgroundTransparency = 1,
-        Size = UDim2.new(1, 0, 0, 58)
+        Size = UDim2.new(1, 0, 0, 46),
+        BackgroundColor3 = self.Theme.Sidebar,
+        BorderSizePixel = 0
     }, Main)
 
+    Corner(Topbar, 12)
+
+    Create("Frame", {
+        Size = UDim2.new(1, 0, 0, 12),
+        Position = UDim2.new(0, 0, 1, -12),
+        BackgroundColor3 = self.Theme.Sidebar,
+        BorderSizePixel = 0
+    }, Topbar)
+
     local Title = Create("TextLabel", {
+        Size = UDim2.new(1, -90, 0, 20),
+        Position = UDim2.fromOffset(12, 5),
         BackgroundTransparency = 1,
-        Position = UDim2.new(0, 18, 0, 7),
-        Size = UDim2.new(1, -125, 0, 24),
-        Font = Enum.Font.GothamBold,
-        Text = config.Name or "M4teoUI",
+        Text = title,
         TextColor3 = self.Theme.Text,
-        TextSize = 16,
+        TextSize = 14,
+        Font = Enum.Font.GothamBold,
         TextXAlignment = Enum.TextXAlignment.Left
     }, Topbar)
 
     local Subtitle = Create("TextLabel", {
+        Size = UDim2.new(1, -90, 0, 15),
+        Position = UDim2.fromOffset(13, 25),
         BackgroundTransparency = 1,
-        Position = UDim2.new(0, 18, 0, 31),
-        Size = UDim2.new(1, -125, 0, 18),
-        Font = Enum.Font.Gotham,
-        Text = config.Subtitle or "M4teoUI",
+        Text = subtitle,
         TextColor3 = self.Theme.Muted,
-        TextSize = 11,
+        TextSize = 9,
+        Font = Enum.Font.Gotham,
         TextXAlignment = Enum.TextXAlignment.Left
     }, Topbar)
 
-    --// Minimize
     local Minimize = Create("TextButton", {
+        Size = UDim2.fromOffset(29, 29),
+        Position = UDim2.new(1, -64, 0, 8),
         BackgroundColor3 = self.Theme.Element,
-        BorderSizePixel = 0,
-        Position = UDim2.new(1, -72, 0, 14),
-        Size = UDim2.new(0, 26, 0, 26),
-        Font = Enum.Font.GothamBold,
         Text = "—",
         TextColor3 = self.Theme.Text,
-        TextSize = 15,
+        TextSize = 14,
+        Font = Enum.Font.GothamBold,
         AutoButtonColor = false
     }, Topbar)
 
-    Corner(Minimize, 7)
+    Corner(Minimize, 8)
 
-    --// Close
     local Close = Create("TextButton", {
+        Size = UDim2.fromOffset(29, 29),
+        Position = UDim2.new(1, -32, 0, 8),
         BackgroundColor3 = self.Theme.Element,
-        BorderSizePixel = 0,
-        Position = UDim2.new(1, -40, 0, 14),
-        Size = UDim2.new(0, 26, 0, 26),
-        Font = Enum.Font.GothamBold,
         Text = "×",
         TextColor3 = self.Theme.Text,
-        TextSize = 16,
+        TextSize = 17,
+        Font = Enum.Font.Gotham,
         AutoButtonColor = false
     }, Topbar)
 
-    Corner(Close, 7)
+    Corner(Close, 8)
 
-    --// Body
-    local Body = Create("Frame", {
-        BackgroundTransparency = 1,
-        Position = UDim2.new(0, 8, 0, 58),
-        Size = UDim2.new(1, -16, 1, -66)
+    --==================================================
+    -- SIDEBAR
+    --==================================================
+
+    local SidebarWidth = IsMobile() and 92 or 105
+
+    local Sidebar = Create("Frame", {
+        Size = UDim2.new(
+            0,
+            SidebarWidth,
+            1,
+            -46
+        ),
+        Position = UDim2.fromOffset(0, 46),
+        BackgroundColor3 = self.Theme.Sidebar,
+        BorderSizePixel = 0
     }, Main)
 
-    --// Sidebar
-    local Sidebar = Create("Frame", {
-        BackgroundColor3 = self.Theme.Sidebar,
-        BorderSizePixel = 0,
-        Size = UDim2.new(0, 150, 1, 0)
-    }, Body)
+    --==================================================
+    -- SEARCH
+    --==================================================
 
-    Corner(Sidebar, 9)
-
-    --// Search
     local Search = Create("TextBox", {
+        Size = UDim2.new(1, -12, 0, 31),
+        Position = UDim2.fromOffset(6, 7),
         BackgroundColor3 = self.Theme.Element,
         BorderSizePixel = 0,
-        Position = UDim2.new(0, 8, 0, 8),
-        Size = UDim2.new(1, -16, 0, 30),
-        Font = Enum.Font.Gotham,
         PlaceholderText = "Search...",
         PlaceholderColor3 = self.Theme.Muted,
         Text = "",
         TextColor3 = self.Theme.Text,
         TextSize = 10,
+        Font = Enum.Font.Gotham,
         ClearTextOnFocus = false
     }, Sidebar)
 
-    Corner(Search, 7)
-    Padding(Search, 9, 9, 0, 0)
+    Corner(Search, 8)
 
-    --// Tab list
-    local TabScroll = Create("ScrollingFrame", {
+    --==================================================
+    -- TAB SCROLL
+    --==================================================
+
+    local TabContainer = Create("ScrollingFrame", {
+        Name = "Tabs",
+        Size = UDim2.new(
+            1,
+            -8,
+            1,
+            -47
+        ),
+        Position = UDim2.fromOffset(4, 44),
         BackgroundTransparency = 1,
         BorderSizePixel = 0,
-        Position = UDim2.new(0, 7, 0, 45),
-        Size = UDim2.new(1, -14, 1, -52),
-        CanvasSize = UDim2.new(),
-        AutomaticCanvasSize = Enum.AutomaticSize.Y,
         ScrollBarThickness = 2,
-        ScrollBarImageColor3 = self.Theme.Accent
+        ScrollBarImageColor3 = self.Theme.Accent,
+        ScrollingDirection = Enum.ScrollingDirection.Y,
+        CanvasSize = UDim2.new(0, 0, 0, 0),
+        AutomaticCanvasSize = Enum.AutomaticSize.Y
     }, Sidebar)
 
-    Create("UIListLayout", {
+    local TabLayout = Create("UIListLayout", {
         Padding = UDim.new(0, 5),
         SortOrder = Enum.SortOrder.LayoutOrder
-    }, TabScroll)
+    }, TabContainer)
 
-    --// Content
+    AddPadding(
+        TabContainer,
+        2,
+        2,
+        2,
+        5
+    )
+
+    --==================================================
+    -- CONTENT
+    --==================================================
+
     local Content = Create("Frame", {
-        BackgroundTransparency = 1,
-        Position = UDim2.new(0, 158, 0, 0),
-        Size = UDim2.new(1, -158, 1, 0)
-    }, Body)
+        Size = UDim2.new(
+            1,
+            -SidebarWidth,
+            1,
+            -46
+        ),
+        Position = UDim2.new(
+            0,
+            SidebarWidth,
+            0,
+            46
+        ),
+        BackgroundColor3 = self.Theme.Background,
+        BorderSizePixel = 0
+    }, Main)
 
-    --// Reopen button
-    local Reopen = Create("TextButton", {
-        Visible = false,
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        Position = UDim2.new(0.5, 0, 0.5, 0),
-        Size = UDim2.new(0, 54, 0, 54),
-        BackgroundColor3 = self.Theme.Accent,
-        BorderSizePixel = 0,
-        Font = Enum.Font.GothamBold,
-        Text = "M",
-        TextColor3 = Color3.new(1, 1, 1),
-        TextSize = 18,
-        AutoButtonColor = false
-    }, ScreenGui)
+    --==================================================
+    -- PAGES
+    --==================================================
 
-    Corner(Reopen, 14)
+    local Pages = {}
+    local TabButtons = {}
+    local SelectedTab = nil
 
-    --//====================================================
-    --// Dragging
-    --//====================================================
+    local function SelectTab(tabData)
+        if not tabData then
+            return
+        end
+
+        SelectedTab = tabData
+
+        for _, data in ipairs(Pages) do
+            local active = data == tabData
+
+            data.Page.Visible = active
+
+            if active then
+                Tween(
+                    data.Button,
+                    0.15,
+                    {
+                        BackgroundColor3 = self.Theme.Accent
+                    }
+                )
+
+                Tween(
+                    data.ButtonText,
+                    0.15,
+                    {
+                        TextColor3 = Color3.new(
+                            1,
+                            1,
+                            1
+                        )
+                    }
+                )
+            else
+                Tween(
+                    data.Button,
+                    0.15,
+                    {
+                        BackgroundColor3 = self.Theme.Element
+                    }
+                )
+
+                Tween(
+                    data.ButtonText,
+                    0.15,
+                    {
+                        TextColor3 = self.Theme.Muted
+                    }
+                )
+            end
+        end
+    end
+
+    --==================================================
+    -- DRAG
+    --==================================================
 
     local dragging = false
     local dragStart
     local startPosition
 
-    Connect(Topbar.InputBegan, function(input)
+    Connect(
+        Topbar.InputBegan,
+        function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1
+                or input.UserInputType == Enum.UserInputType.Touch then
 
-        if input.UserInputType ~= Enum.UserInputType.MouseButton1
-            and input.UserInputType ~= Enum.UserInputType.Touch then
-            return
+                dragging = true
+                dragStart = input.Position
+                startPosition = Main.Position
+
+                local changed
+
+                changed = input.Changed:Connect(
+                    function()
+                        if input.UserInputState == Enum.UserInputState.End then
+                            dragging = false
+
+                            if changed then
+                                changed:Disconnect()
+                            end
+                        end
+                    end
+                )
+            end
         end
+    )
 
-        dragging = true
-        dragStart = input.Position
-        startPosition = Main.Position
-    end, Window._Connections)
+    Connect(
+        UserInputService.InputChanged,
+        function(input)
+            if not dragging then
+                return
+            end
 
-    Connect(UserInputService.InputChanged, function(input)
+            if input.UserInputType ~= Enum.UserInputType.MouseMovement
+                and input.UserInputType ~= Enum.UserInputType.Touch then
+                return
+            end
 
-        if not dragging then
-            return
-        end
+            local delta = input.Position - dragStart
 
-        if input.UserInputType ~= Enum.UserInputType.MouseMovement
-            and input.UserInputType ~= Enum.UserInputType.Touch then
-            return
-        end
-
-        local delta = input.Position - dragStart
-
-        Main.Position = UDim2.new(
-            startPosition.X.Scale,
-            startPosition.X.Offset + delta.X,
-            startPosition.Y.Scale,
-            startPosition.Y.Offset + delta.Y
-        )
-    end, Window._Connections)
-
-    Connect(UserInputService.InputEnded, function(input)
-
-        if input.UserInputType == Enum.UserInputType.MouseButton1
-            or input.UserInputType == Enum.UserInputType.Touch then
-
-            dragging = false
-        end
-    end, Window._Connections)
-
-    --//====================================================
-    --// Visibility
-    --//====================================================
-
-    local function SetVisible(state)
-
-        if Window._Destroyed then
-            return
-        end
-
-        Window._Visible = state
-
-        if state then
-
-            Reopen.Visible = false
-            Main.Visible = true
-
-            Main.Size = UDim2.new(0, 0, 0, 0)
-
-            Tween(
-                Main,
-                0.25,
-                {
-                    Size = UDim2.new(0, width, 0, height)
-                },
-                Enum.EasingStyle.Back
+            Main.Position = UDim2.new(
+                startPosition.X.Scale,
+                startPosition.X.Offset + delta.X,
+                startPosition.Y.Scale,
+                startPosition.Y.Offset + delta.Y
             )
+        end
+    )
 
-        else
+    --==================================================
+    -- MINIMIZE
+    --==================================================
 
+    local minimized = false
+
+    local function SetMinimized(value)
+        minimized = value
+
+        if minimized then
             Tween(
                 Main,
                 0.2,
                 {
-                    Size = UDim2.new(0, 0, 0, 0)
-                },
-                Enum.EasingStyle.Quad,
-                Enum.EasingDirection.In
+                    Size = UDim2.fromOffset(
+                        width,
+                        46
+                    )
+                }
             )
 
-            task.delay(0.2, function()
+            Sidebar.Visible = false
+            Content.Visible = false
 
-                if Window._Destroyed then
-                    return
+            Minimize.Text = "+"
+        else
+            Tween(
+                Main,
+                0.2,
+                {
+                    Size = UDim2.fromOffset(
+                        width,
+                        height
+                    )
+                }
+            )
+
+            task.delay(
+                0.16,
+                function()
+                    if not minimized then
+                        Sidebar.Visible = true
+                        Content.Visible = true
+                    end
                 end
+            )
 
-                Main.Visible = false
-                Reopen.Visible = true
-
-            end)
+            Minimize.Text = "—"
         end
     end
 
     Connect(
         Minimize.MouseButton1Click,
         function()
-            SetVisible(false)
-        end,
-        Window._Connections
+            SetMinimized(not minimized)
+        end
     )
 
-    Connect(
-        Reopen.MouseButton1Click,
-        function()
-            SetVisible(true)
-        end,
-        Window._Connections
-    )
+    --==================================================
+    -- CLOSE
+    --==================================================
+
+    local destroyed = false
 
     Connect(
         Close.MouseButton1Click,
         function()
-            Window:Destroy()
-        end,
-        Window._Connections
-    )
-
-    --//====================================================
-    --// Window API
-    --//====================================================
-
-    function Window:SetVisibility(state)
-        SetVisible(state ~= false)
-    end
-
-    function Window:IsVisible()
-        return Window._Visible
-    end
-
-    function Window:Notify(data)
-        M4teoUI:Notify(data)
-    end
-
-    function Window:SetTheme(theme)
-        M4teoUI:SetTheme(theme)
-    end
-
-    function Window:Destroy()
-
-        if Window._Destroyed then
-            return
-        end
-
-        Window._Destroyed = true
-
-        DisconnectAll(Window._Connections)
-
-        for _, tab in ipairs(Window._Tabs) do
-            if tab.Destroy then
-                pcall(function()
-                    tab:Destroy()
-                end)
-            end
-        end
-
-        pcall(function()
-            Main:Destroy()
-        end)
-
-        pcall(function()
-            Reopen:Destroy()
-        end)
-
-        for index, object in ipairs(M4teoUI.Windows) do
-            if object == Window then
-                table.remove(M4teoUI.Windows, index)
-                break
-            end
-        end
-    end
-
-    --//====================================================
-    --// Theme
-    --//====================================================
-
-    function Window:_ApplyTheme()
-
-        Main.BackgroundColor3 = M4teoUI.Theme.Background
-        MainStroke.Color = M4teoUI.Theme.Border
-
-        Sidebar.BackgroundColor3 = M4teoUI.Theme.Sidebar
-
-        Search.BackgroundColor3 = M4teoUI.Theme.Element
-        Search.TextColor3 = M4teoUI.Theme.Text
-        Search.PlaceholderColor3 = M4teoUI.Theme.Muted
-
-        Title.TextColor3 = M4teoUI.Theme.Text
-        Subtitle.TextColor3 = M4teoUI.Theme.Muted
-
-        Minimize.BackgroundColor3 = M4teoUI.Theme.Element
-        Close.BackgroundColor3 = M4teoUI.Theme.Element
-
-        Reopen.BackgroundColor3 = M4teoUI.Theme.Accent
-
-        for _, tab in ipairs(Window._Tabs) do
-            if tab._ApplyTheme then
-                Safe(tab._ApplyTheme)
-            end
-        end
-    end
-
-    --//====================================================
-    --// Search
-    --//====================================================
-
-    Connect(Search:GetPropertyChangedSignal("Text"), function()
-
-        local query = string.lower(Search.Text)
-
-        for _, tab in ipairs(Window._Tabs) do
-
-            local visible = query == ""
-                or string.find(
-                    string.lower(tab.Name),
-                    query,
-                    1,
-                    true
-                )
-
-            tab.Button.Visible = visible
-        end
-
-    end, Window._Connections)
-
-    --//====================================================
-    --// CreateTab
-    --//====================================================
-
-    function Window:CreateTab(name, icon)
-
-        local Tab = {}
-
-        Tab.Name = name or ("Tab " .. tostring(#Window._Tabs + 1))
-        Tab._Connections = {}
-        Tab._Elements = {}
-
-        local TabButton = Create("TextButton", {
-            BackgroundColor3 = M4teoUI.Theme.Element,
-            BorderSizePixel = 0,
-            Size = UDim2.new(1, 0, 0, 37),
-            Font = Enum.Font.GothamSemibold,
-            Text = (icon and tostring(icon) .. "  " or "") .. Tab.Name,
-            TextColor3 = M4teoUI.Theme.Muted,
-            TextSize = 11,
-            TextXAlignment = Enum.TextXAlignment.Left,
-            AutoButtonColor = false
-        }, TabScroll)
-
-        Corner(TabButton, 7)
-        Padding(TabButton, 11, 7, 0, 0)
-
-        local Page = Create("ScrollingFrame", {
-            Visible = false,
-            BackgroundTransparency = 1,
-            BorderSizePixel = 0,
-            Size = UDim2.new(1, 0, 1, 0),
-            CanvasSize = UDim2.new(),
-            AutomaticCanvasSize = Enum.AutomaticSize.Y,
-            ScrollBarThickness = 3,
-            ScrollBarImageColor3 = M4teoUI.Theme.Accent
-        }, Content)
-
-        Padding(Page, 4, 5, 3, 3)
-
-        local Layout = Create("UIListLayout", {
-            Padding = UDim.new(0, 7),
-            SortOrder = Enum.SortOrder.LayoutOrder
-        }, Page)
-
-        Tab.Button = TabButton
-        Tab.Page = Page
-        Tab.Layout = Layout
-
-        --// Select
-        local function Select()
-
-            for _, other in ipairs(Window._Tabs) do
-
-                other._Selected = false
-                other.Page.Visible = false
-
-                Tween(
-                    other.Button,
-                    0.15,
-                    {
-                        BackgroundColor3 = M4teoUI.Theme.Element,
-                        TextColor3 = M4teoUI.Theme.Muted
-                    }
-                )
+            if destroyed then
+                return
             end
 
-            Tab._Selected = true
-            Page.Visible = true
+            destroyed = true
 
             Tween(
-                TabButton,
-                0.15,
+                Main,
+                0.18,
                 {
-                    BackgroundColor3 = M4teoUI.Theme.Accent,
-                    TextColor3 = Color3.new(1, 1, 1)
+                    Size = UDim2.fromOffset(
+                        width - 20,
+                        0
+                    )
                 }
             )
 
-            Window._ActiveTab = Tab
+            task.wait(0.2)
+
+            if Main then
+                Main:Destroy()
+            end
         end
+    )
+
+    --==================================================
+    -- WINDOW API
+    --==================================================
+
+    window.Main = Main
+    window.Tabs = Pages
+    window.ScreenGui = ScreenGui
+
+    function window:SetVisibility(value)
+        if Main then
+            Main.Visible = value
+        end
+    end
+
+    function window:IsVisible()
+        return Main and Main.Visible or false
+    end
+
+    function window:Minimize()
+        SetMinimized(true)
+    end
+
+    function window:Restore()
+        SetMinimized(false)
+    end
+
+    function window:Destroy()
+        destroyed = true
+
+        if Main then
+            Main:Destroy()
+        end
+    end
+
+    function window:CreateTab(name, icon)
+        name = tostring(name or "Tab")
+
+        local tabData = {}
+
+        --==================================================
+        -- TAB BUTTON
+        --==================================================
+
+        local TabButton = Create("TextButton", {
+            Size = UDim2.new(
+                1,
+                -2,
+                0,
+                42
+            ),
+            BackgroundColor3 = self.Theme.Element,
+            BorderSizePixel = 0,
+            Text = "",
+            AutoButtonColor = false
+        }, TabContainer)
+
+        Corner(TabButton, 9)
+
+        local TabText = Create("TextLabel", {
+            Size = UDim2.new(
+                1,
+                -14,
+                1,
+                0
+            ),
+            Position = UDim2.fromOffset(7, 0),
+            BackgroundTransparency = 1,
+            Text = name,
+            TextColor3 = self.Theme.Muted,
+            TextSize = 10,
+            Font = Enum.Font.GothamMedium,
+            TextXAlignment = Enum.TextXAlignment.Left
+        }, TabButton)
+
+        tabData.Button = TabButton
+        tabData.ButtonText = TabText
+        tabData.Name = name
+
+        --==================================================
+        -- PAGE
+        --==================================================
+
+        local Page = Create("ScrollingFrame", {
+            Name = name .. "_Page",
+            Size = UDim2.new(
+                1,
+                -10,
+                1,
+                -8
+            ),
+            Position = UDim2.fromOffset(5, 4),
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            ScrollBarThickness = 3,
+            ScrollBarImageColor3 = self.Theme.Accent,
+            ScrollingDirection = Enum.ScrollingDirection.Y,
+            CanvasSize = UDim2.new(
+                0,
+                0,
+                0,
+                0
+            ),
+            AutomaticCanvasSize = Enum.AutomaticSize.Y,
+            Visible = false,
+            ClipsDescendants = true
+        }, Content)
+
+        local PagePadding = Instance.new("UIPadding")
+        PagePadding.PaddingTop = UDim.new(0, 3)
+        PagePadding.PaddingBottom = UDim.new(0, 12)
+        PagePadding.PaddingLeft = UDim.new(0, 2)
+        PagePadding.PaddingRight = UDim.new(0, 6)
+        PagePadding.Parent = Page
+
+        local PageLayout = Create("UIListLayout", {
+            Padding = UDim.new(0, 6),
+            SortOrder = Enum.SortOrder.LayoutOrder
+        }, Page)
+
+        tabData.Page = Page
+        tabData.Layout = PageLayout
+
+        table.insert(Pages, tabData)
 
         Connect(
             TabButton.MouseButton1Click,
-            Select,
-            Tab._Connections
+            function()
+                SelectTab(tabData)
+            end
         )
 
-        table.insert(Window._Tabs, Tab)
-
         --==================================================
-        -- Section
+        -- TAB API
         --==================================================
 
-        function Tab:CreateSection(text)
-
+        function tabData:CreateSection(text)
             local section = Create("TextLabel", {
+                Size = UDim2.new(
+                    1,
+                    -2,
+                    0,
+                    27
+                ),
                 BackgroundTransparency = 1,
-                Size = UDim2.new(1, -8, 0, 27),
-                Font = Enum.Font.GothamBold,
-                Text = text or "Section",
-                TextColor3 = M4teoUI.Theme.Text,
+                Text = tostring(text or "Section"),
+                TextColor3 = self.Theme.Text,
                 TextSize = 13,
+                Font = Enum.Font.GothamBold,
                 TextXAlignment = Enum.TextXAlignment.Left
             }, Page)
-
-            Padding(section, 5, 0, 0, 0)
 
             return section
         end
 
-        --==================================================
-        -- Label
-        --==================================================
-
-        function Tab:CreateLabel(text)
-
-            local frame = Create("Frame", {
-                BackgroundColor3 = M4teoUI.Theme.Element,
-                BorderSizePixel = 0,
-                Size = UDim2.new(1, -8, 0, 40)
-            }, Page)
-
-            Corner(frame, 8)
-            Stroke(frame, M4teoUI.Theme.Border, 1, 0.25)
-
+        function tabData:CreateLabel(text)
             local label = Create("TextLabel", {
-                BackgroundTransparency = 1,
-                Position = UDim2.new(0, 12, 0, 0),
-                Size = UDim2.new(1, -24, 1, 0),
-                Font = Enum.Font.Gotham,
+                Size = UDim2.new(
+                    1,
+                    -2,
+                    0,
+                    38
+                ),
+                BackgroundColor3 = self.Theme.Element,
+                BorderSizePixel = 0,
                 Text = tostring(text or ""),
-                TextColor3 = M4teoUI.Theme.Muted,
-                TextSize = 12,
+                TextColor3 = self.Theme.Muted,
+                TextSize = 11,
+                Font = Enum.Font.Gotham,
+                TextWrapped = true,
                 TextXAlignment = Enum.TextXAlignment.Left,
                 TextYAlignment = Enum.TextYAlignment.Center
-            }, frame)
-
-            local Object = {}
-
-            function Object:Set(value)
-                label.Text = tostring(value)
-            end
-
-            function Object:Get()
-                return label.Text
-            end
-
-            function Object:Destroy()
-                frame:Destroy()
-            end
-
-            Object._Frame = frame
-
-            table.insert(Tab._Elements, Object)
-
-            return Object
-        end
-
-        --==================================================
-        -- Paragraph
-        --==================================================
-
-        function Tab:CreateParagraph(data)
-
-            data = data or {}
-
-            local frame = Create("Frame", {
-                BackgroundColor3 = M4teoUI.Theme.Element,
-                BorderSizePixel = 0,
-                Size = UDim2.new(1, -8, 0, 75)
             }, Page)
 
-            Corner(frame, 8)
-            Stroke(frame, M4teoUI.Theme.Border, 1, 0.25)
+            Corner(label, 9)
 
-            local title = Create("TextLabel", {
-                BackgroundTransparency = 1,
-                Position = UDim2.new(0, 12, 0, 7),
-                Size = UDim2.new(1, -24, 0, 22),
-                Font = Enum.Font.GothamBold,
-                Text = data.Title or "Paragraph",
-                TextColor3 = M4teoUI.Theme.Text,
-                TextSize = 13,
-                TextXAlignment = Enum.TextXAlignment.Left
-            }, frame)
+            AddPadding(
+                label,
+                12,
+                0,
+                10,
+                0
+            )
 
-            local content = Create("TextLabel", {
+            return label
+        end
+
+        function tabData:CreateParagraph(config)
+            config = config or {}
+
+            local titleText = tostring(
+                config.Title or "Paragraph"
+            )
+
+            local contentText = tostring(
+                config.Content or ""
+            )
+
+            local holder = Create("Frame", {
+                Size = UDim2.new(
+                    1,
+                    -2,
+                    0,
+                    62
+                ),
+                BackgroundColor3 = self.Theme.Element,
+                BorderSizePixel = 0
+            }, Page)
+
+            Corner(holder, 9)
+
+            Create("TextLabel", {
+                Size = UDim2.new(
+                    1,
+                    -20,
+                    0,
+                    20
+                ),
+                Position = UDim2.fromOffset(10, 7),
                 BackgroundTransparency = 1,
-                Position = UDim2.new(0, 12, 0, 29),
-                Size = UDim2.new(1, -24, 0, 38),
-                Font = Enum.Font.Gotham,
-                Text = data.Content or "",
-                TextColor3 = M4teoUI.Theme.Muted,
+                Text = titleText,
+                TextColor3 = self.Theme.Text,
                 TextSize = 11,
+                Font = Enum.Font.GothamBold,
+                TextXAlignment = Enum.TextXAlignment.Left
+            }, holder)
+
+            Create("TextLabel", {
+                Size = UDim2.new(
+                    1,
+                    -20,
+                    0,
+                    29
+                ),
+                Position = UDim2.fromOffset(10, 28),
+                BackgroundTransparency = 1,
+                Text = contentText,
+                TextColor3 = self.Theme.Muted,
+                TextSize = 10,
+                Font = Enum.Font.Gotham,
                 TextWrapped = true,
                 TextXAlignment = Enum.TextXAlignment.Left,
                 TextYAlignment = Enum.TextYAlignment.Top
-            }, frame)
+            }, holder)
 
-            local Object = {}
-
-            function Object:Set(value)
-                content.Text = tostring(value)
-            end
-
-            function Object:SetTitle(value)
-                title.Text = tostring(value)
-            end
-
-            function Object:Destroy()
-                frame:Destroy()
-            end
-
-            Object._Frame = frame
-
-            table.insert(Tab._Elements, Object)
-
-            return Object
+            return holder
         end
 
-        --==================================================
-        -- Button
-        --==================================================
-
-        function Tab:CreateButton(data)
-
-            data = data or {}
-
-            local frame = Create("Frame", {
-                BackgroundColor3 = M4teoUI.Theme.Element,
-                BorderSizePixel = 0,
-                Size = UDim2.new(1, -8, 0, 45)
-            }, Page)
-
-            Corner(frame, 8)
-            Stroke(frame, M4teoUI.Theme.Border, 1, 0.25)
+        function tabData:CreateButton(config)
+            config = config or {}
 
             local button = Create("TextButton", {
-                BackgroundTransparency = 1,
-                Size = UDim2.new(1, 0, 1, 0),
-                Font = Enum.Font.GothamSemibold,
-                Text = data.Name or "Button",
-                TextColor3 = M4teoUI.Theme.Text,
-                TextSize = 12,
-                AutoButtonColor = false
-            }, frame)
-
-            Connect(button.MouseEnter, function()
-                Tween(frame, 0.12, {
-                    BackgroundColor3 = M4teoUI.Theme.ElementHover
-                })
-            end, Tab._Connections)
-
-            Connect(button.MouseLeave, function()
-                Tween(frame, 0.12, {
-                    BackgroundColor3 = M4teoUI.Theme.Element
-                })
-            end, Tab._Connections)
-
-            Connect(button.MouseButton1Click, function()
-                Tween(frame, 0.08, {
-                    BackgroundColor3 = M4teoUI.Theme.Accent
-                })
-
-                task.delay(0.08, function()
-                    if frame.Parent then
-                        Tween(frame, 0.12, {
-                            BackgroundColor3 = M4teoUI.Theme.Element
-                        })
-                    end
-                end)
-
-                Safe(data.Callback)
-            end, Tab._Connections)
-
-            local Object = {}
-
-            function Object:SetText(value)
-                button.Text = tostring(value)
-            end
-
-            function Object:Destroy()
-                frame:Destroy()
-            end
-
-            Object._Frame = frame
-
-            table.insert(Tab._Elements, Object)
-
-            return Object
-        end
-
-        --==================================================
-        -- Toggle
-        --==================================================
-
-        function Tab:CreateToggle(data)
-
-            data = data or {}
-
-            local value = data.CurrentValue == true
-            local flag = data.Flag or data.Name or ("Toggle" .. #Tab._Elements + 1)
-
-            local frame = Create("Frame", {
-                BackgroundColor3 = M4teoUI.Theme.Element,
+                Size = UDim2.new(
+                    1,
+                    -2,
+                    0,
+                    46
+                ),
+                BackgroundColor3 = self.Theme.Element,
                 BorderSizePixel = 0,
-                Size = UDim2.new(1, -8, 0, 48)
+                Text = tostring(
+                    config.Name or "Button"
+                ),
+                TextColor3 = self.Theme.Text,
+                TextSize = 11,
+                Font = Enum.Font.GothamMedium,
+                AutoButtonColor = false
             }, Page)
 
-            Corner(frame, 8)
-            Stroke(frame, M4teoUI.Theme.Border, 1, 0.25)
+            Corner(button, 9)
 
-            local label = Create("TextLabel", {
-                BackgroundTransparency = 1,
-                Position = UDim2.new(0, 12, 0, 0),
-                Size = UDim2.new(1, -75, 1, 0),
-                Font = Enum.Font.GothamSemibold,
-                Text = data.Name or "Toggle",
-                TextColor3 = M4teoUI.Theme.Text,
-                TextSize = 12,
-                TextXAlignment = Enum.TextXAlignment.Left
-            }, frame)
+            local stroke = AddStroke(
+                button,
+                self.Theme.Border,
+                1
+            )
 
-            local switch = Create("TextButton", {
-                BackgroundColor3 = value
-                    and M4teoUI.Theme.Accent
-                    or M4teoUI.Theme.Background,
+            Connect(
+                button.MouseEnter,
+                function()
+                    Tween(
+                        button,
+                        0.12,
+                        {
+                            BackgroundColor3 =
+                                self.Theme.ElementHover
+                        }
+                    )
+                end
+            )
 
+            Connect(
+                button.MouseLeave,
+                function()
+                    Tween(
+                        button,
+                        0.12,
+                        {
+                            BackgroundColor3 =
+                                self.Theme.Element
+                        }
+                    )
+                end
+            )
+
+            Connect(
+                button.MouseButton1Click,
+                function()
+                    Safe(config.Callback)
+                end
+            )
+
+            return button
+        end
+
+        function tabData:CreateToggle(config)
+            config = config or {}
+
+            local current = config.CurrentValue == true
+
+            local holder = Create("TextButton", {
+                Size = UDim2.new(
+                    1,
+                    -2,
+                    0,
+                    48
+                ),
+                BackgroundColor3 = self.Theme.Element,
                 BorderSizePixel = 0,
-
-                Position = UDim2.new(1, -53, 0.5, -11),
-                Size = UDim2.new(0, 42, 0, 22),
-
                 Text = "",
                 AutoButtonColor = false
-            }, frame)
+            }, Page)
 
-            Corner(switch, 11)
+            Corner(holder, 9)
+
+            local label = Create("TextLabel", {
+                Size = UDim2.new(
+                    1,
+                    -75,
+                    1,
+                    0
+                ),
+                Position = UDim2.fromOffset(12, 0),
+                BackgroundTransparency = 1,
+                Text = tostring(
+                    config.Name or "Toggle"
+                ),
+                TextColor3 = self.Theme.Text,
+                TextSize = 11,
+                Font = Enum.Font.GothamMedium,
+                TextXAlignment = Enum.TextXAlignment.Left
+            }, holder)
+
+            local switch = Create("Frame", {
+                Size = UDim2.fromOffset(58, 29),
+                Position = UDim2.new(
+                    1,
+                    -68,
+                    0.5,
+                    -14
+                ),
+                BackgroundColor3 =
+                    current
+                    and self.Theme.ToggleOn
+                    or self.Theme.ToggleOff,
+                BorderSizePixel = 0
+            }, holder)
+
+            Corner(switch, 20)
 
             local knob = Create("Frame", {
-                BackgroundColor3 = Color3.new(1, 1, 1),
-                BorderSizePixel = 0,
-
-                Position = value
-                    and UDim2.new(1, -20, 0.5, -8)
-                    or UDim2.new(0, 4, 0.5, -8),
-
-                Size = UDim2.new(0, 16, 0, 16)
+                Size = UDim2.fromOffset(21, 21),
+                Position = current
+                    and UDim2.new(1, -25, 0.5, -10)
+                    or UDim2.fromOffset(4, 4),
+                BackgroundColor3 =
+                    Color3.fromRGB(
+                        250,
+                        250,
+                        250
+                    ),
+                BorderSizePixel = 0
             }, switch)
 
-            Corner(knob, 8)
+            Corner(knob, 20)
 
-            local Object = {}
+            local function Update(value)
+                current = value == true
 
-            local function SetValue(newValue, callback)
+                Tween(
+                    switch,
+                    0.14,
+                    {
+                        BackgroundColor3 =
+                            current
+                            and self.Theme.ToggleOn
+                            or self.Theme.ToggleOff
+                    }
+                )
 
-                value = newValue == true
+                Tween(
+                    knob,
+                    0.14,
+                    {
+                        Position = current
+                            and UDim2.new(
+                                1,
+                                -25,
+                                0.5,
+                                -10
+                            )
+                            or UDim2.fromOffset(
+                                4,
+                                4
+                            )
+                    }
+                )
 
-                Tween(switch, 0.15, {
-                    BackgroundColor3 = value
-                        and M4teoUI.Theme.Accent
-                        or M4teoUI.Theme.Background
-                })
-
-                Tween(knob, 0.15, {
-                    Position = value
-                        and UDim2.new(1, -20, 0.5, -8)
-                        or UDim2.new(0, 4, 0.5, -8)
-                })
-
-                M4teoUI.Flags[flag] = value
-
-                if callback ~= false then
-                    Safe(data.Callback, value)
+                if config.Flag then
+                    M4teoUI.Flags[
+                        config.Flag
+                    ] = current
                 end
+
+                Safe(
+                    config.Callback,
+                    current
+                )
             end
 
             Connect(
-                switch.MouseButton1Click,
+                holder.MouseButton1Click,
                 function()
-                    SetValue(not value)
-                end,
-                Tab._Connections
+                    Update(not current)
+                end
             )
 
-            M4teoUI.Flags[flag] = value
-
-            function Object:Set(newValue)
-                SetValue(newValue)
+            if config.Flag then
+                M4teoUI.Flags[
+                    config.Flag
+                ] = current
             end
 
-            function Object:Get()
-                return value
+            local object = {}
+
+            object.CurrentValue = current
+
+            function object:Set(value)
+                Update(value)
+                object.CurrentValue = current
             end
 
-            function Object:Destroy()
-                frame:Destroy()
+            function object:Get()
+                return current
             end
 
-            Object._Frame = frame
+            M4teoUI.Options[
+                config.Flag
+                    or tostring(config.Name)
+            ] = object
 
-            table.insert(Tab._Elements, Object)
-
-            M4teoUI.Options[flag] = Object
-
-            return Object
+            return object
         end
 
-        --==================================================
-        -- Slider
-        --==================================================
+        function tabData:CreateSlider(config)
+            config = config or {}
 
-        function Tab:CreateSlider(data)
-
-            data = data or {}
-
-            local range = data.Range or {0, 100}
+            local range = config.Range or {0, 100}
 
             local minimum = tonumber(range[1]) or 0
             local maximum = tonumber(range[2]) or 100
-            local increment = tonumber(data.Increment) or 1
-            local value = tonumber(data.CurrentValue) or minimum
 
-            local flag = data.Flag
-                or data.Name
-                or ("Slider" .. #Tab._Elements + 1)
+            local increment =
+                tonumber(config.Increment)
+                or 1
 
-            local frame = Create("Frame", {
-                BackgroundColor3 = M4teoUI.Theme.Element,
-                BorderSizePixel = 0,
-                Size = UDim2.new(1, -8, 0, 62)
+            local current =
+                tonumber(config.CurrentValue)
+                or minimum
+
+            current = math.clamp(
+                current,
+                minimum,
+                maximum
+            )
+
+            local holder = Create("Frame", {
+                Size = UDim2.new(
+                    1,
+                    -2,
+                    0,
+                    68
+                ),
+                BackgroundColor3 = self.Theme.Element,
+                BorderSizePixel = 0
             }, Page)
 
-            Corner(frame, 8)
-            Stroke(frame, M4teoUI.Theme.Border, 1, 0.25)
+            Corner(holder, 9)
 
             local label = Create("TextLabel", {
+                Size = UDim2.new(
+                    1,
+                    -70,
+                    0,
+                    23
+                ),
+                Position = UDim2.fromOffset(12, 7),
                 BackgroundTransparency = 1,
-                Position = UDim2.new(0, 12, 0, 5),
-                Size = UDim2.new(0.65, 0, 0, 23),
-                Font = Enum.Font.GothamSemibold,
-                Text = data.Name or "Slider",
-                TextColor3 = M4teoUI.Theme.Text,
-                TextSize = 12,
+                Text = tostring(
+                    config.Name or "Slider"
+                ),
+                TextColor3 = self.Theme.Text,
+                TextSize = 11,
+                Font = Enum.Font.GothamMedium,
                 TextXAlignment = Enum.TextXAlignment.Left
-            }, frame)
+            }, holder)
 
             local valueLabel = Create("TextLabel", {
+                Size = UDim2.fromOffset(
+                    55,
+                    23
+                ),
+                Position = UDim2.new(
+                    1,
+                    -64,
+                    0,
+                    7
+                ),
                 BackgroundTransparency = 1,
-                Position = UDim2.new(0.68, 0, 0, 5),
-                Size = UDim2.new(0.28, 0, 0, 23),
-                Font = Enum.Font.GothamSemibold,
-                Text = tostring(value),
-                TextColor3 = M4teoUI.Theme.Accent,
-                TextSize = 12,
+                Text = tostring(current),
+                TextColor3 = self.Theme.Accent,
+                TextSize = 11,
+                Font = Enum.Font.GothamBold,
                 TextXAlignment = Enum.TextXAlignment.Right
-            }, frame)
+            }, holder)
 
             local bar = Create("Frame", {
-                BackgroundColor3 = M4teoUI.Theme.Background,
-                BorderSizePixel = 0,
-                Position = UDim2.new(0, 12, 0, 40),
-                Size = UDim2.new(1, -24, 0, 7)
-            }, frame)
+                Size = UDim2.new(
+                    1,
+                    -24,
+                    0,
+                    7
+                ),
+                Position = UDim2.fromOffset(
+                    12,
+                    45
+                ),
+                BackgroundColor3 =
+                    self.Theme.ToggleOff,
+                BorderSizePixel = 0
+            }, holder)
 
-            Corner(bar, 4)
+            Corner(bar, 10)
 
             local fill = Create("Frame", {
-                BackgroundColor3 = M4teoUI.Theme.Accent,
-                BorderSizePixel = 0,
-                Size = UDim2.new(0, 0, 1, 0)
+                Size = UDim2.new(
+                    (
+                        current - minimum
+                    ) / (
+                        maximum - minimum
+                    ),
+                    0,
+                    1,
+                    0
+                ),
+                BackgroundColor3 =
+                    self.Theme.Accent,
+                BorderSizePixel = 0
             }, bar)
 
-            Corner(fill, 4)
+            Corner(fill, 10)
 
             local draggingSlider = false
 
-            local Object = {}
-
-            local function Quantize(number)
-
-                number = math.clamp(
-                    number,
-                    minimum,
-                    maximum
-                )
-
-                if increment > 0 then
-
-                    number =
-                        math.floor(
-                            ((number - minimum) / increment) + 0.5
-                        )
-                        * increment
-                        + minimum
-
-                end
+            local function RoundValue(value)
+                local rounded =
+                    math.floor(
+                        (
+                            value
+                            - minimum
+                        ) / increment
+                        + 0.5
+                    ) * increment
+                    + minimum
 
                 return math.clamp(
-                    number,
+                    rounded,
                     minimum,
                     maximum
                 )
             end
 
-            local function SetValue(newValue, callback)
+            local function SetValue(value)
+                value = tonumber(value)
 
-                value = Quantize(
-                    tonumber(newValue) or minimum
+                if not value then
+                    return
+                end
+
+                current = RoundValue(value)
+
+                local percent =
+                    (
+                        current
+                        - minimum
+                    ) / (
+                        maximum
+                        - minimum
+                    )
+
+                Tween(
+                    fill,
+                    0.08,
+                    {
+                        Size = UDim2.new(
+                            percent,
+                            0,
+                            1,
+                            0
+                        )
+                    }
                 )
 
-                local percent
+                valueLabel.Text =
+                    tostring(current)
 
-                if maximum == minimum then
-                    percent = 0
-                else
-                    percent =
-                        (value - minimum)
-                        / (maximum - minimum)
+                if config.Flag then
+                    M4teoUI.Flags[
+                        config.Flag
+                    ] = current
                 end
 
-                Tween(fill, 0.08, {
-                    Size = UDim2.new(percent, 0, 1, 0)
-                })
-
-                valueLabel.Text = tostring(value)
-
-                M4teoUI.Flags[flag] = value
-
-                if callback ~= false then
-                    Safe(data.Callback, value)
-                end
+                Safe(
+                    config.Callback,
+                    current
+                )
             end
 
-            local function UpdateFromPosition(x)
+            local function UpdateFromInput(input)
+                local position =
+                    input.Position.X
+
+                local absolute =
+                    bar.AbsolutePosition.X
+
+                local size =
+                    bar.AbsoluteSize.X
 
                 local percent =
                     math.clamp(
-                        (x - bar.AbsolutePosition.X)
-                        / bar.AbsoluteSize.X,
+                        (
+                            position
+                            - absolute
+                        ) / size,
                         0,
                         1
                     )
 
-                local newValue =
+                SetValue(
                     minimum
-                    + (maximum - minimum) * percent
-
-                SetValue(newValue)
+                    + (
+                        maximum
+                        - minimum
+                    ) * percent
+                )
             end
 
             Connect(
                 bar.InputBegan,
                 function(input)
-
                     if input.UserInputType
                         == Enum.UserInputType.MouseButton1
                         or input.UserInputType
                         == Enum.UserInputType.Touch then
 
                         draggingSlider = true
-
-                        UpdateFromPosition(
-                            input.Position.X
-                        )
+                        UpdateFromInput(input)
                     end
-                end,
-                Tab._Connections
+                end
             )
 
             Connect(
                 UserInputService.InputChanged,
                 function(input)
-
                     if not draggingSlider then
                         return
                     end
@@ -1448,18 +1508,14 @@ function M4teoUI:CreateWindow(config)
                         or input.UserInputType
                         == Enum.UserInputType.Touch then
 
-                        UpdateFromPosition(
-                            input.Position.X
-                        )
+                        UpdateFromInput(input)
                     end
-                end,
-                Tab._Connections
+                end
             )
 
             Connect(
                 UserInputService.InputEnded,
                 function(input)
-
                     if input.UserInputType
                         == Enum.UserInputType.MouseButton1
                         or input.UserInputType
@@ -1467,421 +1523,600 @@ function M4teoUI:CreateWindow(config)
 
                         draggingSlider = false
                     end
-                end,
-                Tab._Connections
+                end
             )
 
-            SetValue(value, false)
-
-            function Object:Set(newValue)
-                SetValue(newValue)
+            if config.Flag then
+                M4teoUI.Flags[
+                    config.Flag
+                ] = current
             end
 
-            function Object:Get()
-                return value
+            local object = {}
+
+            object.CurrentValue = current
+
+            function object:Set(value)
+                SetValue(value)
+                object.CurrentValue = current
             end
 
-            function Object:Destroy()
-                frame:Destroy()
+            function object:Get()
+                return current
             end
 
-            Object._Frame = frame
+            M4teoUI.Options[
+                config.Flag
+                    or tostring(config.Name)
+            ] = object
 
-            table.insert(Tab._Elements, Object)
-
-            M4teoUI.Options[flag] = Object
-
-            return Object
+            return object
         end
 
-        --==================================================
-        -- Dropdown
-        --==================================================
+        function tabData:CreateDropdown(config)
+            config = config or {}
 
-        function Tab:CreateDropdown(data)
-
-            data = data or {}
-
-            local options = {}
-
-            for _, option in ipairs(data.Options or {}) do
-                table.insert(options, tostring(option))
-            end
+            local options =
+                config.Options
+                or {}
 
             local current =
-                data.CurrentOption
-                or options[1]
-                or ""
+                config.CurrentOption
 
-            local flag =
-                data.Flag
-                or data.Name
-                or ("Dropdown" .. #Tab._Elements + 1)
+            if type(current) == "table" then
+                current = current[1]
+            end
 
-            local opened = false
+            if current == nil
+                and #options > 0 then
 
-            local frame = Create("Frame", {
-                BackgroundColor3 = M4teoUI.Theme.Element,
+                current = options[1]
+            end
+
+            local holder = Create("Frame", {
+                Size = UDim2.new(
+                    1,
+                    -2,
+                    0,
+                    48
+                ),
+                BackgroundColor3 = self.Theme.Element,
                 BorderSizePixel = 0,
-                Size = UDim2.new(1, -8, 0, 44),
                 ClipsDescendants = false
             }, Page)
 
-            Corner(frame, 8)
-            Stroke(frame, M4teoUI.Theme.Border, 1, 0.25)
+            Corner(holder, 9)
 
             local button = Create("TextButton", {
+                Size = UDim2.new(
+                    1,
+                    0,
+                    0,
+                    48
+                ),
                 BackgroundTransparency = 1,
-                Size = UDim2.new(1, 0, 1, 0),
-                Font = Enum.Font.GothamSemibold,
-                Text = (data.Name or "Dropdown")
-                    .. "    "
-                    .. tostring(current),
-                TextColor3 = M4teoUI.Theme.Text,
-                TextSize = 12,
-                TextXAlignment = Enum.TextXAlignment.Left,
+                Text = "",
                 AutoButtonColor = false
-            }, frame)
+            }, holder)
 
-            Padding(button, 12, 12, 0, 0)
-
-            local list = Create("Frame", {
-                Visible = false,
-                BackgroundColor3 = M4teoUI.Theme.Element,
-                BorderSizePixel = 0,
-                Position = UDim2.new(0, 0, 1, 5),
-                Size = UDim2.new(1, 0, 0, 40),
-                ZIndex = 100,
-                ClipsDescendants = true
-            }, frame)
-
-            Corner(list, 8)
-            Stroke(list, M4teoUI.Theme.Border, 1)
-
-            local scroll = Create("ScrollingFrame", {
+            local label = Create("TextLabel", {
+                Size = UDim2.new(
+                    0.48,
+                    0,
+                    1,
+                    0
+                ),
+                Position = UDim2.fromOffset(
+                    12,
+                    0
+                ),
                 BackgroundTransparency = 1,
+                Text = tostring(
+                    config.Name
+                    or "Dropdown"
+                ),
+                TextColor3 = self.Theme.Text,
+                TextSize = 11,
+                Font = Enum.Font.GothamMedium,
+                TextXAlignment =
+                    Enum.TextXAlignment.Left
+            }, button)
+
+            local selected = Create("TextLabel", {
+                Size = UDim2.new(
+                    0.45,
+                    -10,
+                    1,
+                    0
+                ),
+                Position = UDim2.new(
+                    0.52,
+                    0,
+                    0,
+                    0
+                ),
+                BackgroundTransparency = 1,
+                Text = tostring(
+                    current or "Select..."
+                ),
+                TextColor3 = self.Theme.Accent,
+                TextSize = 10,
+                Font = Enum.Font.GothamMedium,
+                TextXAlignment =
+                    Enum.TextXAlignment.Right
+            }, button)
+
+            local arrow = Create("TextLabel", {
+                Size = UDim2.fromOffset(
+                    15,
+                    48
+                ),
+                Position = UDim2.new(
+                    1,
+                    -19,
+                    0,
+                    0
+                ),
+                BackgroundTransparency = 1,
+                Text = "⌄",
+                TextColor3 = self.Theme.Muted,
+                TextSize = 13,
+                Font = Enum.Font.GothamBold
+            }, button)
+
+            local List = Create("ScrollingFrame", {
+                Name = "DropdownList",
+                Size = UDim2.new(
+                    1,
+                    -8,
+                    0,
+                    110
+                ),
+                Position = UDim2.new(
+                    0,
+                    4,
+                    1,
+                    3
+                ),
+                BackgroundColor3 =
+                    self.Theme.Sidebar,
                 BorderSizePixel = 0,
-                Position = UDim2.new(0, 5, 0, 5),
-                Size = UDim2.new(1, -10, 1, -10),
                 ScrollBarThickness = 2,
-                CanvasSize = UDim2.new(),
-                AutomaticCanvasSize = Enum.AutomaticSize.Y,
-                ZIndex = 101
-            }, list)
+                ScrollBarImageColor3 =
+                    self.Theme.Accent,
+                ScrollingDirection =
+                    Enum.ScrollingDirection.Y,
+                CanvasSize = UDim2.new(
+                    0,
+                    0,
+                    0,
+                    0
+                ),
+                AutomaticCanvasSize =
+                    Enum.AutomaticSize.Y,
+                Visible = false,
+                ZIndex = 50
+            }, holder)
 
-            local layout = Create("UIListLayout", {
-                Padding = UDim.new(0, 4)
-            }, scroll)
+            Corner(List, 8)
+            AddStroke(
+                List,
+                self.Theme.Border,
+                1
+            )
 
-            local Object = {}
+            local listLayout = Create(
+                "UIListLayout",
+                {
+                    Padding = UDim.new(0, 3),
+                    SortOrder =
+                        Enum.SortOrder.LayoutOrder
+                },
+                List
+            )
 
-            local function Rebuild()
+            AddPadding(
+                List,
+                5,
+                5,
+                5,
+                5
+            )
 
-                for _, child in ipairs(scroll:GetChildren()) do
+            local opened = false
+            local optionButtons = {}
 
-                    if child:IsA("TextButton") then
+            local function SetOption(value)
+                current = value
+                selected.Text =
+                    tostring(value)
+
+                if config.Flag then
+                    M4teoUI.Flags[
+                        config.Flag
+                    ] = value
+                end
+
+                Safe(
+                    config.Callback,
+                    value
+                )
+            end
+
+            local function Refresh(newOptions)
+                for _, child in ipairs(
+                    optionButtons
+                ) do
+                    if child then
                         child:Destroy()
                     end
                 end
 
-                for _, option in ipairs(options) do
+                table.clear(
+                    optionButtons
+                )
 
-                    local optionButton = Create("TextButton", {
-                        BackgroundColor3 = M4teoUI.Theme.Background,
-                        BorderSizePixel = 0,
-                        Size = UDim2.new(1, 0, 0, 30),
-                        Font = Enum.Font.Gotham,
-                        Text = option,
-                        TextColor3 = M4teoUI.Theme.Text,
-                        TextSize = 11,
-                        AutoButtonColor = false,
-                        ZIndex = 102
-                    }, scroll)
+                options = newOptions
+                    or options
 
-                    Corner(optionButton, 6)
+                for index, option in ipairs(
+                    options
+                ) do
+
+                    local optionButton =
+                        Create(
+                            "TextButton",
+                            {
+                                LayoutOrder = index,
+                                Size = UDim2.new(
+                                    1,
+                                    0,
+                                    0,
+                                    29
+                                ),
+                                BackgroundColor3 =
+                                    self.Theme.Element,
+                                BorderSizePixel = 0,
+                                Text = tostring(
+                                    option
+                                ),
+                                TextColor3 =
+                                    self.Theme.Text,
+                                TextSize = 10,
+                                Font =
+                                    Enum.Font.Gotham,
+                                AutoButtonColor =
+                                    false,
+                                ZIndex = 51
+                            },
+                            List
+                        )
+
+                    Corner(
+                        optionButton,
+                        6
+                    )
 
                     Connect(
                         optionButton.MouseButton1Click,
                         function()
-
-                            current = option
-
-                            button.Text =
-                                (data.Name or "Dropdown")
-                                .. "    "
-                                .. current
-
-                            M4teoUI.Flags[flag] =
-                                current
-
-                            Safe(
-                                data.Callback,
-                                current
+                            SetOption(
+                                option
                             )
 
                             opened = false
-                            list.Visible = false
-                        end,
-                        Tab._Connections
+                            List.Visible = false
+
+                            holder.Size =
+                                UDim2.new(
+                                    1,
+                                    -2,
+                                    0,
+                                    48
+                                )
+                        end
+                    )
+
+                    table.insert(
+                        optionButtons,
+                        optionButton
                     )
                 end
-
-                local height =
-                    math.min(
-                        180,
-                        math.max(
-                            40,
-                            (#options * 34) + 10
-                        )
-                    )
-
-                list.Size =
-                    UDim2.new(
-                        1,
-                        0,
-                        0,
-                        height
-                    )
             end
 
-            Rebuild()
+            Refresh(options)
 
             Connect(
                 button.MouseButton1Click,
                 function()
-
                     opened = not opened
 
-                    list.Visible = opened
-                end,
-                Tab._Connections
+                    List.Visible = opened
+
+                    if opened then
+                        holder.Size =
+                            UDim2.new(
+                                1,
+                                -2,
+                                0,
+                                163
+                            )
+                    else
+                        holder.Size =
+                            UDim2.new(
+                                1,
+                                -2,
+                                0,
+                                48
+                            )
+                    end
+                end
             )
 
-            M4teoUI.Flags[flag] = current
-
-            function Object:Set(value)
-
-                current = tostring(value)
-
-                button.Text =
-                    (data.Name or "Dropdown")
-                    .. "    "
-                    .. current
-
-                M4teoUI.Flags[flag] =
-                    current
-
-                Safe(
-                    data.Callback,
-                    current
-                )
+            if config.Flag then
+                M4teoUI.Flags[
+                    config.Flag
+                ] = current
             end
 
-            function Object:Refresh(newOptions)
+            local object = {}
 
-                options = {}
+            object.CurrentOption = current
 
-                for _, option in ipairs(newOptions or {}) do
-                    table.insert(
-                        options,
-                        tostring(option)
-                    )
+            function object:Set(value)
+                for _, option in ipairs(
+                    options
+                ) do
+                    if tostring(option)
+                        == tostring(value) then
+
+                        SetOption(option)
+                        object.CurrentOption =
+                            option
+
+                        return
+                    end
                 end
-
-                current = options[1] or ""
-
-                Rebuild()
-
-                Object:Set(current)
             end
 
-            function Object:Get()
+            function object:Get()
                 return current
             end
 
-            function Object:Destroy()
-                frame:Destroy()
+            function object:Refresh(
+                newOptions
+            )
+                Refresh(newOptions)
             end
 
-            Object._Frame = frame
+            M4teoUI.Options[
+                config.Flag
+                    or tostring(config.Name)
+            ] = object
 
-            table.insert(Tab._Elements, Object)
-
-            M4teoUI.Options[flag] = Object
-
-            return Object
+            return object
         end
 
-        --==================================================
-        -- Input
-        --==================================================
+        function tabData:CreateInput(config)
+            config = config or {}
 
-        function Tab:CreateInput(data)
-
-            data = data or {}
-
-            local frame = Create("Frame", {
-                BackgroundColor3 = M4teoUI.Theme.Element,
-                BorderSizePixel = 0,
-                Size = UDim2.new(1, -8, 0, 48)
+            local holder = Create("Frame", {
+                Size = UDim2.new(
+                    1,
+                    -2,
+                    0,
+                    48
+                ),
+                BackgroundColor3 =
+                    self.Theme.Element,
+                BorderSizePixel = 0
             }, Page)
 
-            Corner(frame, 8)
-            Stroke(frame, M4teoUI.Theme.Border, 1, 0.25)
+            Corner(holder, 9)
 
             local label = Create("TextLabel", {
+                Size = UDim2.new(
+                    0.4,
+                    0,
+                    1,
+                    0
+                ),
+                Position = UDim2.fromOffset(
+                    12,
+                    0
+                ),
                 BackgroundTransparency = 1,
-                Position = UDim2.new(0, 12, 0, 0),
-                Size = UDim2.new(0.40, 0, 1, 0),
-                Font = Enum.Font.GothamSemibold,
-                Text = data.Name or "Input",
-                TextColor3 = M4teoUI.Theme.Text,
-                TextSize = 12,
-                TextXAlignment = Enum.TextXAlignment.Left
-            }, frame)
-
-            local box = Create("TextBox", {
-                BackgroundColor3 = M4teoUI.Theme.Background,
-                BorderSizePixel = 0,
-                Position = UDim2.new(0.42, 0, 0.5, -15),
-                Size = UDim2.new(0.55, 0, 0, 30),
-                Font = Enum.Font.Gotham,
-                PlaceholderText =
-                    data.PlaceholderText
-                    or "Type here...",
-                PlaceholderColor3 = M4teoUI.Theme.Muted,
-                Text = data.CurrentValue or "",
-                TextColor3 = M4teoUI.Theme.Text,
+                Text = tostring(
+                    config.Name
+                    or "Input"
+                ),
+                TextColor3 =
+                    self.Theme.Text,
                 TextSize = 11,
-                ClearTextOnFocus = false
-            }, frame)
+                Font =
+                    Enum.Font.GothamMedium,
+                TextXAlignment =
+                    Enum.TextXAlignment.Left
+            }, holder)
 
-            Corner(box, 7)
-            Padding(box, 8, 8, 0, 0)
+            local input = Create("TextBox", {
+                Size = UDim2.new(
+                    0.52,
+                    0,
+                    0,
+                    31
+                ),
+                Position = UDim2.new(
+                    0.44,
+                    0,
+                    0.5,
+                    -15
+                ),
+                BackgroundColor3 =
+                    self.Theme.Sidebar,
+                BorderSizePixel = 0,
+                PlaceholderText =
+                    tostring(
+                        config.PlaceholderText
+                        or "Type..."
+                    ),
+                PlaceholderColor3 =
+                    self.Theme.Muted,
+                Text = tostring(
+                    config.CurrentValue
+                    or ""
+                ),
+                TextColor3 =
+                    self.Theme.Text,
+                TextSize = 10,
+                Font =
+                    Enum.Font.Gotham,
+                ClearTextOnFocus =
+                    false
+            }, holder)
 
-            Connect(
-                box.FocusLost,
-                function(enterPressed)
+            Corner(input, 7)
 
-                    Safe(
-                        data.Callback,
-                        box.Text,
-                        enterPressed
-                    )
-                end,
-                Tab._Connections
+            AddPadding(
+                input,
+                9,
+                0,
+                9,
+                0
             )
 
-            local Object = {}
+            local function Changed()
+                if config.Flag then
+                    M4teoUI.Flags[
+                        config.Flag
+                    ] = input.Text
+                end
 
-            function Object:Set(value)
-                box.Text = tostring(value)
+                Safe(
+                    config.Callback,
+                    input.Text
+                )
             end
 
-            function Object:Get()
-                return box.Text
+            Connect(
+                input.FocusLost,
+                function()
+                    Changed()
+                end
+            )
+
+            if config.Flag then
+                M4teoUI.Flags[
+                    config.Flag
+                ] = input.Text
             end
 
-            function Object:Destroy()
-                frame:Destroy()
+            local object = {}
+
+            function object:Set(value)
+                input.Text =
+                    tostring(value or "")
+                Changed()
             end
 
-            Object._Frame = frame
+            function object:Get()
+                return input.Text
+            end
 
-            table.insert(Tab._Elements, Object)
-
-            return Object
+            return object
         end
 
-        --==================================================
-        -- Keybind
-        --==================================================
+        function tabData:CreateKeybind(config)
+            config = config or {}
 
-        function Tab:CreateKeybind(data)
-
-            data = data or {}
-
-            local key = data.CurrentKeybind
+            local currentKey =
+                config.CurrentKeybind
+                or config.CurrentKey
                 or Enum.KeyCode.RightShift
 
-            if typeof(key) == "string"
-                and Enum.KeyCode[key] then
-
-                key = Enum.KeyCode[key]
-            end
-
-            local listening = false
-
-            local frame = Create("Frame", {
-                BackgroundColor3 = M4teoUI.Theme.Element,
-                BorderSizePixel = 0,
-                Size = UDim2.new(1, -8, 0, 48)
+            local holder = Create("Frame", {
+                Size = UDim2.new(
+                    1,
+                    -2,
+                    0,
+                    48
+                ),
+                BackgroundColor3 =
+                    self.Theme.Element,
+                BorderSizePixel = 0
             }, Page)
 
-            Corner(frame, 8)
-            Stroke(frame, M4teoUI.Theme.Border, 1, 0.25)
+            Corner(holder, 9)
 
             local label = Create("TextLabel", {
+                Size = UDim2.new(
+                    0.52,
+                    0,
+                    1,
+                    0
+                ),
+                Position = UDim2.fromOffset(
+                    12,
+                    0
+                ),
                 BackgroundTransparency = 1,
-                Position = UDim2.new(0, 12, 0, 0),
-                Size = UDim2.new(0.55, 0, 1, 0),
-                Font = Enum.Font.GothamSemibold,
-                Text = data.Name or "Keybind",
-                TextColor3 = M4teoUI.Theme.Text,
-                TextSize = 12,
-                TextXAlignment = Enum.TextXAlignment.Left
-            }, frame)
+                Text = tostring(
+                    config.Name
+                    or "Keybind"
+                ),
+                TextColor3 =
+                    self.Theme.Text,
+                TextSize = 11,
+                Font =
+                    Enum.Font.GothamMedium,
+                TextXAlignment =
+                    Enum.TextXAlignment.Left
+            }, holder)
 
             local keyButton = Create("TextButton", {
-                BackgroundColor3 = M4teoUI.Theme.Background,
+                Size = UDim2.fromOffset(
+                    82,
+                    30
+                ),
+                Position = UDim2.new(
+                    1,
+                    -92,
+                    0.5,
+                    -15
+                ),
+                BackgroundColor3 =
+                    self.Theme.Sidebar,
                 BorderSizePixel = 0,
-                Position = UDim2.new(1, -105, 0.5, -15),
-                Size = UDim2.new(0, 93, 0, 30),
-                Font = Enum.Font.GothamSemibold,
-                Text = key.Name,
-                TextColor3 = M4teoUI.Theme.Text,
+                Text = tostring(
+                    currentKey.Name
+                    or currentKey
+                ),
+                TextColor3 =
+                    self.Theme.Text,
                 TextSize = 10,
+                Font =
+                    Enum.Font.GothamBold,
                 AutoButtonColor = false
-            }, frame)
+            }, holder)
 
             Corner(keyButton, 7)
 
-            local Object = {}
+            local listening = false
 
             Connect(
                 keyButton.MouseButton1Click,
                 function()
-
                     listening = true
 
                     keyButton.Text =
                         "Press key..."
-                end,
-                Tab._Connections
+                end
             )
 
             Connect(
                 UserInputService.InputBegan,
                 function(input, processed)
-
-                    if listening then
-
-                        if input.UserInputType
-                            == Enum.UserInputType.Keyboard then
-
-                            key = input.KeyCode
-
-                            listening = false
-
-                            keyButton.Text =
-                                key.Name
-
-                            Safe(
-                                data.Callback,
-                                key
-                            )
-                        end
-
+                    if not listening then
                         return
                     end
 
@@ -1889,341 +2124,518 @@ function M4teoUI:CreateWindow(config)
                         return
                     end
 
-                    if input.KeyCode == key then
-                        Safe(
-                            data.Callback,
-                            key
-                        )
+                    if input.UserInputType
+                        ~= Enum.UserInputType.Keyboard then
+                        return
                     end
-                end,
-                Tab._Connections
+
+                    currentKey =
+                        input.KeyCode
+
+                    listening = false
+
+                    keyButton.Text =
+                        currentKey.Name
+
+                    if config.Flag then
+                        M4teoUI.Flags[
+                            config.Flag
+                        ] = currentKey
+                    end
+
+                    Safe(
+                        config.Callback,
+                        currentKey
+                    )
+                end
             )
 
-            function Object:Set(newKey)
+            if config.Flag then
+                M4teoUI.Flags[
+                    config.Flag
+                ] = currentKey
+            end
 
-                if typeof(newKey) == "string"
-                    and Enum.KeyCode[newKey] then
+            local object = {}
 
-                    newKey = Enum.KeyCode[newKey]
-                end
+            object.CurrentKeybind =
+                currentKey
 
-                if typeof(newKey) == "EnumItem" then
+            function object:Set(key)
+                if typeof(key)
+                    == "EnumItem" then
 
-                    key = newKey
+                    currentKey = key
 
                     keyButton.Text =
                         key.Name
+
+                    object.CurrentKeybind =
+                        key
+
+                    if config.Flag then
+                        M4teoUI.Flags[
+                            config.Flag
+                        ] = key
+                    end
                 end
             end
 
-            function Object:Get()
-                return key
+            function object:Get()
+                return currentKey
             end
 
-            function Object:Destroy()
-                frame:Destroy()
-            end
+            M4teoUI.Options[
+                config.Flag
+                    or tostring(config.Name)
+            ] = object
 
-            Object._Frame = frame
-
-            table.insert(Tab._Elements, Object)
-
-            return Object
+            return object
         end
 
-        --==================================================
-        -- ColorPicker
-        --==================================================
+        function tabData:CreateColorPicker(config)
+            config = config or {}
 
-        function Tab:CreateColorPicker(data)
-
-            data = data or {}
-
-            local color =
-                data.Color
-                or Color3.fromRGB(
-                    255,
-                    255,
-                    255
+            local current =
+                NormalizeColor(
+                    config.Color
+                    or config.CurrentColor
                 )
 
-            local frame = Create("Frame", {
-                BackgroundColor3 = M4teoUI.Theme.Element,
-                BorderSizePixel = 0,
-                Size = UDim2.new(1, -8, 0, 48)
+            local holder = Create("Frame", {
+                Size = UDim2.new(
+                    1,
+                    -2,
+                    0,
+                    48
+                ),
+                BackgroundColor3 =
+                    self.Theme.Element,
+                BorderSizePixel = 0
             }, Page)
 
-            Corner(frame, 8)
-            Stroke(frame, M4teoUI.Theme.Border, 1, 0.25)
+            Corner(holder, 9)
 
             local label = Create("TextLabel", {
+                Size = UDim2.new(
+                    1,
+                    -75,
+                    1,
+                    0
+                ),
+                Position = UDim2.fromOffset(
+                    12,
+                    0
+                ),
                 BackgroundTransparency = 1,
-                Position = UDim2.new(0, 12, 0, 0),
-                Size = UDim2.new(1, -70, 1, 0),
-                Font = Enum.Font.GothamSemibold,
-                Text = data.Name or "Color",
-                TextColor3 = M4teoUI.Theme.Text,
-                TextSize = 12,
-                TextXAlignment = Enum.TextXAlignment.Left
-            }, frame)
+                Text = tostring(
+                    config.Name
+                    or "Color Picker"
+                ),
+                TextColor3 =
+                    self.Theme.Text,
+                TextSize = 11,
+                Font =
+                    Enum.Font.GothamMedium,
+                TextXAlignment =
+                    Enum.TextXAlignment.Left
+            }, holder)
 
             local preview = Create("TextButton", {
-                BackgroundColor3 = color,
+                Size = UDim2.fromOffset(
+                    44,
+                    28
+                ),
+                Position = UDim2.new(
+                    1,
+                    -55,
+                    0.5,
+                    -14
+                ),
+                BackgroundColor3 =
+                    current,
                 BorderSizePixel = 0,
-                Position = UDim2.new(1, -47, 0.5, -13),
-                Size = UDim2.new(0, 34, 0, 26),
                 Text = "",
                 AutoButtonColor = false
-            }, frame)
+            }, holder)
 
             Corner(preview, 7)
 
-            local Object = {}
+            local popup = Create("Frame", {
+                Size = UDim2.new(
+                    1,
+                    -2,
+                    0,
+                    115
+                ),
+                Position = UDim2.new(
+                    0,
+                    1,
+                    1,
+                    4
+                ),
+                BackgroundColor3 =
+                    self.Theme.Sidebar,
+                BorderSizePixel = 0,
+                Visible = false,
+                ZIndex = 60
+            }, holder)
 
-            -- Basic RGB editing API.
-            -- A full popup can be attached later without changing this API.
+            Corner(popup, 8)
+            AddStroke(
+                popup,
+                self.Theme.Border,
+                1
+            )
 
-            function Object:Set(newColor)
+            local red = Create("TextBox", {
+                Size = UDim2.new(
+                    1,
+                    -16,
+                    0,
+                    27
+                ),
+                Position = UDim2.fromOffset(
+                    8,
+                    8
+                ),
+                BackgroundColor3 =
+                    self.Theme.Element,
+                BorderSizePixel = 0,
+                PlaceholderText = "R 0-255",
+                Text = "",
+                TextColor3 =
+                    self.Theme.Text,
+                TextSize = 10,
+                Font = Enum.Font.Gotham
+            }, popup)
 
-                if typeof(newColor) ~= "Color3" then
+            Corner(red, 6)
+
+            local green = red:Clone()
+            green.Position =
+                UDim2.fromOffset(8, 42)
+            green.PlaceholderText =
+                "G 0-255"
+            green.Text = ""
+            green.Parent = popup
+
+            local blue = red:Clone()
+            blue.Position =
+                UDim2.fromOffset(8, 76)
+            blue.PlaceholderText =
+                "B 0-255"
+            blue.Text = ""
+            blue.Parent = popup
+
+            local function ApplyColor()
+                local r = math.clamp(
+                    tonumber(red.Text)
+                        or math.floor(
+                            current.R * 255
+                        ),
+                    0,
+                    255
+                )
+
+                local g = math.clamp(
+                    tonumber(green.Text)
+                        or math.floor(
+                            current.G * 255
+                        ),
+                    0,
+                    255
+                )
+
+                local b = math.clamp(
+                    tonumber(blue.Text)
+                        or math.floor(
+                            current.B * 255
+                        ),
+                    0,
+                    255
+                )
+
+                current = Color3.fromRGB(
+                    r,
+                    g,
+                    b
+                )
+
+                preview.BackgroundColor3 =
+                    current
+
+                if config.Flag then
+                    M4teoUI.Flags[
+                        config.Flag
+                    ] = current
+                end
+
+                Safe(
+                    config.Callback,
+                    current
+                )
+            end
+
+            Connect(
+                preview.MouseButton1Click,
+                function()
+                    popup.Visible =
+                        not popup.Visible
+
+                    holder.Size =
+                        popup.Visible
+                        and UDim2.new(
+                            1,
+                            -2,
+                            0,
+                            167
+                        )
+                        or UDim2.new(
+                            1,
+                            -2,
+                            0,
+                            48
+                        )
+                end
+            )
+
+            Connect(
+                red.FocusLost,
+                ApplyColor
+            )
+
+            Connect(
+                green.FocusLost,
+                ApplyColor
+            )
+
+            Connect(
+                blue.FocusLost,
+                ApplyColor
+            )
+
+            local object = {}
+
+            function object:Set(color)
+                if typeof(color)
+                    ~= "Color3" then
                     return
                 end
 
-                color = newColor
-
+                current = color
                 preview.BackgroundColor3 =
-                    newColor
+                    color
+
+                if config.Flag then
+                    M4teoUI.Flags[
+                        config.Flag
+                    ] = color
+                end
 
                 Safe(
-                    data.Callback,
-                    newColor
+                    config.Callback,
+                    color
                 )
             end
 
-            function Object:Get()
-                return color
+            function object:Get()
+                return current
             end
 
-            function Object:Destroy()
-                frame:Destroy()
+            if config.Flag then
+                M4teoUI.Flags[
+                    config.Flag
+                ] = current
             end
 
-            Object._Frame = frame
+            M4teoUI.Options[
+                config.Flag
+                    or tostring(config.Name)
+            ] = object
 
-            table.insert(Tab._Elements, Object)
-
-            return Object
+            return object
         end
 
-        --==================================================
-        -- Select first tab
-        --==================================================
+        return tabData
+    end
 
-        if not Window._ActiveTab then
-            Select()
+    --==================================================
+    -- SEARCH TABS
+    --==================================================
+
+    Connect(
+        Search:GetPropertyChangedSignal("Text"),
+        function()
+            local query =
+                string.lower(
+                    Search.Text
+                )
+
+            for _, tab in ipairs(Pages) do
+                if query == "" then
+                    tab.Button.Visible = true
+                else
+                    tab.Button.Visible =
+                        string.find(
+                            string.lower(
+                                tab.Name
+                            ),
+                            query,
+                            1,
+                            true
+                        ) ~= nil
+                end
+            end
         end
+    )
 
-        return Tab
+    --==================================================
+    -- THEME UPDATE
+    --==================================================
+
+    function window.ApplyTheme()
+        Main.BackgroundColor3 =
+            self.Theme.Background
+
+        MainStroke.Color =
+            self.Theme.Border
+
+        Topbar.BackgroundColor3 =
+            self.Theme.Sidebar
+
+        Sidebar.BackgroundColor3 =
+            self.Theme.Sidebar
+
+        Content.BackgroundColor3 =
+            self.Theme.Background
+
+        Search.BackgroundColor3 =
+            self.Theme.Element
+
+        Search.PlaceholderColor3 =
+            self.Theme.Muted
+
+        Title.TextColor3 =
+            self.Theme.Text
+
+        Subtitle.TextColor3 =
+            self.Theme.Muted
+
+        Minimize.BackgroundColor3 =
+            self.Theme.Element
+
+        Close.BackgroundColor3 =
+            self.Theme.Element
+
+        for _, tab in ipairs(Pages) do
+            tab.ButtonText.TextColor3 =
+                self.Theme.Muted
+
+            if tab ~= SelectedTab then
+                tab.Button.BackgroundColor3 =
+                    self.Theme.Element
+            else
+                tab.Button.BackgroundColor3 =
+                    self.Theme.Accent
+                tab.ButtonText.TextColor3 =
+                    Color3.new(1, 1, 1)
+            end
+        end
+    end
+
+    --==================================================
+    -- FIRST TAB AUTO SELECT
+    --==================================================
+
+    function window:SelectTab(name)
+        for _, tab in ipairs(Pages) do
+            if tab.Name == name then
+                SelectTab(tab)
+                return
+            end
+        end
     end
 
     table.insert(
-        self.Windows,
-        Window
+        M4teoUI.Windows,
+        window
     )
 
-    return Window
+    --==================================================
+    -- OPEN ANIMATION
+    --==================================================
+
+    local finalSize =
+        UDim2.fromOffset(
+            width,
+            height
+        )
+
+    Main.Size =
+        UDim2.fromOffset(
+            width - 25,
+            height - 20
+        )
+
+    Main.BackgroundTransparency = 1
+
+    Tween(
+        Main,
+        0.25,
+        {
+            Size = finalSize,
+            BackgroundTransparency = 0
+        }
+    )
+
+    --==================================================
+    -- DEFAULT TAB
+    --==================================================
+
+    return window
 end
 
---//========================================================
---// Global Visibility
---//========================================================
+--==================================================
+-- COMPATIBILITY
+--==================================================
 
-function M4teoUI:SetVisibility(state)
+function M4teoUI:Create(config)
+    return self:CreateWindow(config)
+end
 
-    for _, window in ipairs(self.Windows) do
+--==================================================
+-- GLOBAL VISIBILITY
+--==================================================
 
-        if not window._Destroyed then
-            window:SetVisibility(state)
-        end
-    end
+function M4teoUI:SetVisibility(value)
+    ScreenGui.Enabled = value
 end
 
 function M4teoUI:IsVisible()
-
-    for _, window in ipairs(self.Windows) do
-
-        if not window._Destroyed then
-            return window:IsVisible()
-        end
-    end
-
-    return false
+    return ScreenGui.Enabled
 end
-
---//========================================================
---// Flags
---//========================================================
-
-function M4teoUI:GetFlag(name)
-    return self.Flags[name]
-end
-
-function M4teoUI:SetFlag(name, value)
-
-    self.Flags[name] = value
-
-    local option = self.Options[name]
-
-    if option and option.Set then
-        pcall(function()
-            option:Set(value)
-        end)
-    end
-end
-
-function M4teoUI:ClearFlags()
-    table.clear(self.Flags)
-end
-
---//========================================================
---// Configuration
---//========================================================
-
-function M4teoUI:Serialize()
-
-    local result = {}
-
-    for name, value in pairs(self.Flags) do
-
-        if typeof(value) == "Color3" then
-
-            result[name] = {
-                Type = "Color3",
-                R = value.R,
-                G = value.G,
-                B = value.B
-            }
-
-        elseif typeof(value) == "EnumItem" then
-
-            result[name] = {
-                Type = "Enum",
-                Name = value.Name
-            }
-
-        elseif type(value) == "string"
-            or type(value) == "number"
-            or type(value) == "boolean" then
-
-            result[name] = value
-        end
-    end
-
-    return result
-end
-
-function M4teoUI:EncodeConfig()
-
-    local success, encoded =
-        pcall(function()
-
-            return HttpService:JSONEncode(
-                self:Serialize()
-            )
-        end)
-
-    if success then
-        return encoded
-    end
-
-    return "{}"
-end
-
-function M4teoUI:LoadConfig(data)
-
-    if typeof(data) ~= "table" then
-        return
-    end
-
-    for name, value in pairs(data) do
-
-        local option =
-            self.Options[name]
-
-        if option and option.Set then
-
-            if typeof(value) == "table"
-                and value.Type == "Color3" then
-
-                option:Set(
-                    Color3.new(
-                        value.R or 1,
-                        value.G or 1,
-                        value.B or 1
-                    )
-                )
-
-            else
-
-                option:Set(value)
-
-            end
-
-        else
-
-            self.Flags[name] = value
-        end
-    end
-end
-
-function M4teoUI:DecodeConfig(encoded)
-
-    local success, data =
-        pcall(function()
-
-            return HttpService:JSONDecode(
-                encoded
-            )
-        end)
-
-    if success then
-        self:LoadConfig(data)
-    end
-end
-
---//========================================================
---// Destroy
---//========================================================
 
 function M4teoUI:Destroy()
+    DisconnectAll(Connections)
 
-    for index = #self.Windows, 1, -1 do
-
-        local window =
-            self.Windows[index]
-
-        if window then
-            pcall(function()
-                window:Destroy()
-            end)
-        end
+    for _, window in ipairs(self.Windows) do
+        pcall(function()
+            window:Destroy()
+        end)
     end
 
     table.clear(self.Windows)
+    table.clear(self.Flags)
+    table.clear(self.Options)
 
-    DisconnectAll(
-        self.Connections
-    )
-
-    pcall(function()
+    if ScreenGui then
         ScreenGui:Destroy()
-    end)
+    end
 end
 
---//========================================================
---// Compatibility
---//========================================================
-
-M4teoUI.Create = M4teoUI.CreateWindow
+--==================================================
+-- RETURN
+--==================================================
 
 return M4teoUI
